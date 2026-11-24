@@ -5,8 +5,8 @@ meta {
   source_files: ["docs/core/validation/validation-schema-design-spec.md","docs/core/validation/validation-arch.md","docs/core/validation/validation-impl-plan.md"]
   load_with: ["../core/root.json","../core/concrete-value-types.json","../core/abstract-value-types.json","../core/property-types.json","../core/relationship-types.json","../core/operator-types.json","../core/validation.json"]
 }
-schema "MAP Validation Schema-v0.1.0" {
-  depends_on "MAP Core Schema-v0.0.7"
+schema "MAP Validation Schema-v0.1.4" {
+  depends_on "MAP Core Schema-v0.0.11"
   header {
     description: "One-way Core-dependent extension for validation implementations, results, Validate, and non-Commit rule families."
   }

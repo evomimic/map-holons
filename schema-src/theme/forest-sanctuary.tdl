@@ -1,0 +1,605 @@
+schema "MAP Theme Schema-v0.1.4" {
+  depends_on "MAP Core Schema-v0.0.11"
+  depends_on "MAP Dance Schema-v0.1.4"
+  depends_on "MAP Design Tokens Schema-v0.1.4"
+  depends_on "MAP Meta Design System Schema-v0.1.4"
+  header {
+    description: "MAP schema for Themes as complete, typed value assignments for one Meta Design System. Theme availability is independent of Dancer identity."
+  }
+}
+
+meta {
+  schema_key: "MAP Theme Schema-v0.1.4"
+}
+
+// Realizes the same complete token contract as the other Demo 1 themes.
+instance Demo1.ForestSanctuaryTheme {
+  type Theme.HolonType
+  ThemeName "Demo 1 — Forest Sanctuary"
+  ThemeDescription "A welcoming woodland theme inspired by a sunlit garden entrance. Deep forest canvas surfaces frame moss-green panels and collections, warm ivory text, muted sage secondary text, and gold focus and activity accents. Fern-green actions, quiet borders, modest corner rounding, generous spacing, and serif headings paired with system sans-serif body text bring the garden palette to the shared Demo 1 design-token contract."
+  relationships {
+    ForMetaDesignSystem -> Demo1.MetaDesignSystem
+    HasThemeTokenAssignment -> [
+      Demo1.ForestSanctuaryTheme.CollectionNavigationSurfaceBackground.ThemeTokenAssignment,
+      Demo1.ForestSanctuaryTheme.CollectionNavigationTextColor.ThemeTokenAssignment,
+      Demo1.ForestSanctuaryTheme.RelationshipNavigationSurfaceBackground.ThemeTokenAssignment,
+      Demo1.ForestSanctuaryTheme.RelationshipNavigationTextColor.ThemeTokenAssignment,
+      Demo1.ForestSanctuaryTheme.ViewControlSurfaceBackground.ThemeTokenAssignment,
+      Demo1.ForestSanctuaryTheme.ViewControlTextColor.ThemeTokenAssignment,
+      Demo1.ForestSanctuaryThemePanelSurfaceBackground,
+      Demo1.ForestSanctuaryThemePanelCornerRadius,
+      Demo1.ForestSanctuaryThemeMutedTextColor,
+      Demo1.ForestSanctuaryThemeNodeHeadingFontSize,
+      Demo1.ForestSanctuaryThemeControlGap,
+      Demo1.ForestSanctuaryThemeFocusRingColor,
+      Demo1.ForestSanctuaryThemeFocusRingWidth,
+
+      Demo1.ForestSanctuaryThemeLauncherSurfaceBackground,
+      Demo1.ForestSanctuaryThemeLauncherTextColor,
+      Demo1.ForestSanctuaryThemeLauncherPadding,
+      Demo1.ForestSanctuaryThemeLauncherPhaseGap,
+      Demo1.ForestSanctuaryThemeLauncherIndicatorSize,
+      Demo1.ForestSanctuaryThemeLauncherIndicatorColor,
+      Demo1.ForestSanctuaryThemeLauncherIndicatorWidth,
+      Demo1.ForestSanctuaryThemeLauncherIndicatorDuration,
+      Demo1.ForestSanctuaryThemeLauncherDismissDuration,
+      Demo1.ForestSanctuaryThemeActionSurfaceBackground,
+      Demo1.ForestSanctuaryThemeActionHoverSurfaceBackground,
+      Demo1.ForestSanctuaryThemeActionTextColor,
+      Demo1.ForestSanctuaryThemeActionPaddingBlock,
+      Demo1.ForestSanctuaryThemeActionPaddingInline,
+      Demo1.ForestSanctuaryThemeActionCornerRadius,
+
+      Demo1.ForestSanctuaryThemeCanvasFontFamily,
+      Demo1.ForestSanctuaryThemeCanvasHeadingFontFamily,
+      Demo1.ForestSanctuaryThemeCanvasFontSize,
+      Demo1.ForestSanctuaryThemeCanvasFontWeight,
+      Demo1.ForestSanctuaryThemeCanvasLineHeight,
+      Demo1.ForestSanctuaryThemeCanvasHeadingFontWeight,
+      Demo1.ForestSanctuaryThemeCanvasContentMinHeight,
+      Demo1.ForestSanctuaryThemePropertiesDisclosureFocusColor,
+      Demo1.ForestSanctuaryThemeSlotBorderColor,
+      Demo1.ForestSanctuaryThemeSlotBorderWidth,
+      Demo1.ForestSanctuaryThemeSlotBorderStyle,
+      Demo1.ForestSanctuaryThemeSlotPadding,
+      Demo1.ForestSanctuaryThemeInspectorRailWidth,
+      Demo1.ForestSanctuaryThemeInspectorContentMinHeight,
+      Demo1.ForestSanctuaryThemePropertiesHeadingGap,
+      Demo1.ForestSanctuaryThemePropertiesRowGap,
+      Demo1.ForestSanctuaryThemePropertiesHeadingFontSize,
+      Demo1.ForestSanctuaryThemePropertiesHeadingFontWeight,
+      Demo1.ForestSanctuaryThemePropertyColumnGap,
+      Demo1.ForestSanctuaryThemePropertyNameMinWidth,
+      Demo1.ForestSanctuaryThemeTableCellBorderStyle,
+      Demo1.ForestSanctuaryThemeCollectionHeadingFontSize,
+      Demo1.ForestSanctuaryThemeCollectionHeadingFontWeight,
+      Demo1.ForestSanctuaryThemeTableHeaderFontWeight,
+
+      Demo1.ForestSanctuaryThemeCanvasGap,
+      Demo1.ForestSanctuaryThemeCanvasPadding,
+      Demo1.ForestSanctuaryThemeCanvasSurfaceBackground,
+      Demo1.ForestSanctuaryThemeCanvasTextColor,
+      Demo1.ForestSanctuaryThemeCollectionSurfaceBackground,
+      Demo1.ForestSanctuaryThemeCollectionTextColor,
+      Demo1.ForestSanctuaryThemeCollectionHeaderSurfaceBackground,
+      Demo1.ForestSanctuaryThemeTableHeaderSurfaceBackground,
+      Demo1.ForestSanctuaryThemeTableHeaderTextColor,
+      Demo1.ForestSanctuaryThemeTableCellBorderColor,
+      Demo1.ForestSanctuaryThemeTableCellBorderWidth,
+      Demo1.ForestSanctuaryThemeTableCellPadding
+    ]
+    OfferedByHolonSpace -> MAP.CoreSchemaSpace
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeCanvasGap {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1.25rem"
+  relationships {
+    ForDesignToken -> CanvasGap.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeCanvasPadding {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1.5rem"
+  relationships {
+    ForDesignToken -> CanvasPadding.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeCanvasSurfaceBackground {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#111813"
+  relationships {
+    ForDesignToken -> CanvasSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeCanvasTextColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#f1eddf"
+  relationships {
+    ForDesignToken -> CanvasTextColor.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeCollectionSurfaceBackground {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#1b2b20"
+  relationships {
+    ForDesignToken -> CollectionSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeCollectionTextColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#f1eddf"
+  relationships {
+    ForDesignToken -> CollectionTextColor.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeCollectionHeaderSurfaceBackground {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#28392d"
+  relationships {
+    ForDesignToken -> CollectionHeaderSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeTableHeaderSurfaceBackground {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#28392d"
+  relationships {
+    ForDesignToken -> TableHeaderSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeTableHeaderTextColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#f1eddf"
+  relationships {
+    ForDesignToken -> TableHeaderTextColor.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeTableCellBorderColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#667d65"
+  relationships {
+    ForDesignToken -> TableCellBorderColor.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeTableCellBorderWidth {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1px"
+  relationships {
+    ForDesignToken -> TableCellBorderWidth.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeTableCellPadding {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.875rem"
+  relationships {
+    ForDesignToken -> TableCellPadding.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeCanvasFontFamily {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+  relationships {
+    ForDesignToken -> CanvasFontFamily.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeCanvasHeadingFontFamily {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "Georgia, 'Times New Roman', serif"
+  relationships {
+    ForDesignToken -> CanvasHeadingFontFamily.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeCanvasFontSize {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.875rem"
+  relationships {
+    ForDesignToken -> CanvasFontSize.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeCanvasFontWeight {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "400"
+  relationships {
+    ForDesignToken -> CanvasFontWeight.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeCanvasLineHeight {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1.625rem"
+  relationships {
+    ForDesignToken -> CanvasLineHeight.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeCanvasHeadingFontWeight {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "400"
+  relationships {
+    ForDesignToken -> CanvasHeadingFontWeight.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeCanvasContentMinHeight {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "12rem"
+  relationships {
+    ForDesignToken -> CanvasContentMinHeight.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeSlotBorderColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#667d65"
+  relationships {
+    ForDesignToken -> SlotBorderColor.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeSlotBorderWidth {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1px"
+  relationships {
+    ForDesignToken -> SlotBorderWidth.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeSlotBorderStyle {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "solid"
+  relationships {
+    ForDesignToken -> SlotBorderStyle.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeSlotPadding {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1rem"
+  relationships {
+    ForDesignToken -> SlotPadding.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeInspectorRailWidth {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "15rem"
+  relationships {
+    ForDesignToken -> InspectorRailWidth.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeInspectorContentMinHeight {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "12rem"
+  relationships {
+    ForDesignToken -> InspectorContentMinHeight.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemePropertiesHeadingGap {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.875rem"
+  relationships {
+    ForDesignToken -> PropertiesHeadingGap.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemePropertiesRowGap {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.25rem"
+  relationships {
+    ForDesignToken -> PropertiesRowGap.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemePropertiesHeadingFontSize {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1rem"
+  relationships {
+    ForDesignToken -> PropertiesHeadingFontSize.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemePropertiesHeadingFontWeight {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "600"
+  relationships {
+    ForDesignToken -> PropertiesHeadingFontWeight.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemePropertyColumnGap {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1.25rem"
+  relationships {
+    ForDesignToken -> PropertyColumnGap.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemePropertyNameMinWidth {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "9rem"
+  relationships {
+    ForDesignToken -> PropertyNameMinWidth.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeTableCellBorderStyle {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "solid"
+  relationships {
+    ForDesignToken -> TableCellBorderStyle.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeCollectionHeadingFontSize {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1.125rem"
+  relationships {
+    ForDesignToken -> CollectionHeadingFontSize.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeCollectionHeadingFontWeight {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "600"
+  relationships {
+    ForDesignToken -> CollectionHeadingFontWeight.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeTableHeaderFontWeight {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "600"
+  relationships {
+    ForDesignToken -> TableHeaderFontWeight.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeLauncherSurfaceBackground {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#111813"
+  relationships {
+    ForDesignToken -> LauncherSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeLauncherTextColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#f1eddf"
+  relationships {
+    ForDesignToken -> LauncherTextColor.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeLauncherPadding {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "2rem"
+  relationships {
+    ForDesignToken -> LauncherPadding.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeLauncherPhaseGap {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.625rem"
+  relationships {
+    ForDesignToken -> LauncherPhaseGap.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeLauncherIndicatorSize {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "4rem"
+  relationships {
+    ForDesignToken -> LauncherIndicatorSize.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeLauncherIndicatorColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#e0ce91"
+  relationships {
+    ForDesignToken -> LauncherIndicatorColor.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeLauncherIndicatorWidth {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "4px"
+  relationships {
+    ForDesignToken -> LauncherIndicatorWidth.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeLauncherIndicatorDuration {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1.2s"
+  relationships {
+    ForDesignToken -> LauncherIndicatorDuration.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeLauncherDismissDuration {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.5s"
+  relationships {
+    ForDesignToken -> LauncherDismissDuration.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeActionSurfaceBackground {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#36553f"
+  relationships {
+    ForDesignToken -> ActionSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeActionHoverSurfaceBackground {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#43684d"
+  relationships {
+    ForDesignToken -> ActionHoverSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeActionTextColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#fff8e7"
+  relationships {
+    ForDesignToken -> ActionTextColor.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeActionPaddingBlock {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.85rem"
+  relationships {
+    ForDesignToken -> ActionPaddingBlock.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeActionPaddingInline {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1.2rem"
+  relationships {
+    ForDesignToken -> ActionPaddingInline.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeActionCornerRadius {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.45rem"
+  relationships {
+    ForDesignToken -> ActionCornerRadius.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemePropertiesDisclosureFocusColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#e0ce91"
+  relationships {
+    ForDesignToken -> PropertiesDisclosureFocusColor.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemePanelSurfaceBackground {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#1b2b20"
+  relationships {
+    ForDesignToken -> PanelSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemePanelCornerRadius {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.45rem"
+  relationships {
+    ForDesignToken -> PanelCornerRadius.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeMutedTextColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#acb7a8"
+  relationships {
+    ForDesignToken -> MutedTextColor.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeNodeHeadingFontSize {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1.5rem"
+  relationships {
+    ForDesignToken -> NodeHeadingFontSize.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeControlGap {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.625rem"
+  relationships {
+    ForDesignToken -> ControlGap.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeFocusRingColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#e0ce91"
+  relationships {
+    ForDesignToken -> FocusRingColor.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryThemeFocusRingWidth {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "2px"
+  relationships {
+    ForDesignToken -> FocusRingWidth.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryTheme.CollectionNavigationSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#36553f"
+  relationships {
+    ForDesignToken -> CollectionNavigationSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryTheme.CollectionNavigationTextColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#fff8e7"
+  relationships {
+    ForDesignToken -> CollectionNavigationTextColor.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryTheme.RelationshipNavigationSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#28392d"
+  relationships {
+    ForDesignToken -> RelationshipNavigationSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryTheme.RelationshipNavigationTextColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#dddccc"
+  relationships {
+    ForDesignToken -> RelationshipNavigationTextColor.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryTheme.ViewControlSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#1b2b20"
+  relationships {
+    ForDesignToken -> ViewControlSurfaceBackground.DesignToken
+  }
+}
+
+instance Demo1.ForestSanctuaryTheme.ViewControlTextColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#c4bc91"
+  relationships {
+    ForDesignToken -> ViewControlTextColor.DesignToken
+  }
+}

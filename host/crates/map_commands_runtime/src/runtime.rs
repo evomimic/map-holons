@@ -142,7 +142,10 @@ impl Runtime {
                     name != type_names::ThemeTypeName::LoadTheme.name().to_string()
                         && !matches!(
                             name.as_str(),
-                            "MaterializeVisualizer" | "QueryDance" | "ResolveVisualizerUsage"
+                            "MaterializeVisualizer"
+                                | "QueryDance"
+                                | "ResolveVisualizerUsage"
+                                | "ResolveComposition"
                         )
                 }
                 _ => lifecycle_policy.mutation != MutationClassification::ReadOnly,

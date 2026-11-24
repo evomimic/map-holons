@@ -1,0 +1,55 @@
+[package]
+name = "kitsune2_transport_iroh"
+description = "The iroh-based transport implementation for kitsune2"
+version.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+license.workspace = true
+edition.workspace = true
+
+[dependencies]
+base64 = { workspace = true }
+bytes = { workspace = true }
+iroh = { workspace = true, features = ["tls-aws-lc-rs"] }
+kitsune2_bootstrap_client = { workspace = true }
+# used for test-utils
+iroh-relay = { workspace = true, features = ["server"], optional = true }
+kitsune2_api = { workspace = true }
+# used for test-utils
+kitsune2_core = { workspace = true, optional = true }
+# used for test-utils
+kitsune2_test_utils = { workspace = true, optional = true }
+opentelemetry = { workspace = true, optional = true }
+# used for testing
+opentelemetry_sdk = { workspace = true, features = [
+  "testing",
+], optional = true }
+serde = { workspace = true, features = ["derive"] }
+tokio = { workspace = true, features = [
+  "macros",
+  "rt",
+  "rt-multi-thread",
+  "sync",
+  "time",
+  "io-util",
+] }
+tracing = { workspace = true }
+url = { workspace = true }
+schemars = { workspace = true, optional = true }
+n0-watcher = { workspace = true }
+
+[features]
+schema = ["dep:schemars"]
+
+test-utils = [
+  "iroh-relay/test-utils",
+  "dep:kitsune2_core",
+  "dep:kitsune2_test_utils",
+  "kitsune2_test_utils?/relay",
+  "iroh/test-utils",
+]
+
+metrics = ["dep:opentelemetry", "dep:opentelemetry_sdk"]

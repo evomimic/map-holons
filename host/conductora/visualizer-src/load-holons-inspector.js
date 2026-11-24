@@ -133,7 +133,7 @@ export default class LoadHolonsInspector extends HTMLElement {
     this.propertiesHeading.dataset.propertiesTitleBar = 'true';
     this.propertiesHeading.style.cssText = 'min-width:0;min-height:0;align-items:center;';
     const propertiesLabel = document.createElement('span'); propertiesLabel.textContent = 'Properties';
-    propertiesLabel.style.cssText = 'flex:1;min-width:0;padding:0 .75rem;font-weight:600;';
+    propertiesLabel.style.cssText = 'font-family:var(--dahn-canvas-heading-font-family);flex:1;min-width:0;padding:0 .75rem;font-weight:600;';
     this.propertiesHeading.style.background = 'var(--dahn-action-surface-background)';
     this.propertiesHeading.append(propertiesLabel);
     createInspectionGroupHeader(this, () => { this.presentationState = selectInspectorView(this.presentationState, 'properties'); this.setNodeInspectorAllocation(this.allocation); });
@@ -224,7 +224,9 @@ export default class LoadHolonsInspector extends HTMLElement {
     this.collectionsExpand.style.display = this.ownedCollectionOpen ? 'block' : 'none';
     if (this.ownedCollection) { this.ownedCollection.hidden = layout.mode !== 'collection'; this.ownedCollection.inert = layout.mode !== 'collection'; }
     if (this.collectionViewer) { this.collectionViewer.inert = layout.mode !== 'collection'; this.collectionViewer.style.display = layout.mode === 'collection' ? 'flex' : 'none'; }
-    applyPaneControls({ root: this, heading: this.propertiesHeading, collections: this.collections, collectionTabs: this.collectionTabBar, collectionReturn: this.collectionsExpand }, layout, () => this.setNodeInspectorAllocation(this.allocation));
+    applyPaneControls({ root: this, heading: this.propertiesHeading, collections: this.collections, collectionTabs: this.collectionTabBar, collectionReturn: this.collectionsExpand,
+      collectionAttentionAvailable: !!this.attention, collectionMaximized: this.maximized,
+      requestCollectionAttention: operation => this.attention?.(operation) }, layout, () => this.setNodeInspectorAllocation(this.allocation));
     if ([this.properties, this.collections, this.body, this.rail].some(region => region.inert && region.contains(active))) this.titleControl.focus();
     return { status: 'applied' };
   }

@@ -85,6 +85,15 @@ async fn rstest_dance_test_suites(#[case] suite: DanceTestSuite) {
     runtime_checks::run(&runtime).await;
 }
 
+/// Isolates the shared Agent setup followed by a package referencing the existing Space.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "focused setup-order regression; covered by runtime_behavior_matrix"]
+async fn personal_agent_setup_preserves_later_dancer_import() {
+    let (runtime, _) = boot_dance_test_suite().await;
+    runtime_checks::owner_directed_composition::establish_personal_test_context(&runtime).await;
+    runtime_checks::space_dancer_import::importing_space_navigator_affords_its_dancer_from_the_local_space(&runtime).await;
+}
+
 /// Focused rerun for the fixture-scoped rejection contract; default coverage is in the matrix.
 #[tokio::test(flavor = "multi_thread")]
 #[ignore = "focused bounded rejection verification; covered by runtime_behavior_matrix"]
@@ -139,6 +148,7 @@ fn runtime_behavior_matrix_suite() -> DanceTestSuite {
             commit_version_siblings_fixture().unwrap(),
             commit_no_op_and_graph_only_siblings_fixture().unwrap(),
             commit_disjoint_graph_additions_fixture().unwrap(),
+            commit_relationship_removals_fixture().unwrap(),
             commit_historical_key_uniqueness_fixture().unwrap(),
             commit_identical_graph_additions_fixture().unwrap(),
             commit_graph_overlap_rejection_fixture().unwrap(),
@@ -281,4 +291,28 @@ async fn commit_enum_evolution_fixture_acceptance() {
         test_cases: vec![commit_enum_evolution_fixture().unwrap()],
     })
     .await;
+}
+
+/// Focused rerun of the general removal fixture; normal coverage shares the runtime matrix.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "focused removal regression; runtime_behavior_matrix covers this fixture"]
+async fn relationship_removals_acceptance() {
+    run_dance_test_suite(DanceTestSuite {
+        name: "relationship_removals",
+        test_cases: vec![commit_relationship_removals_fixture().unwrap()],
+    })
+    .await;
+}
+
+/// Focused composition verification uses a disposable store and the ordinary client ingress.
+#[tokio::test(flavor = "multi_thread")]
+async fn owner_directed_composition_acceptance() {
+    let mut case = holons_test::DancesTestCase::default();
+    let (runtime, _, backend) = holons_test::init_commit_performance_runtime(&mut case).await;
+    runtime_checks::owner_directed_composition::owner_directed_bindings_and_personal_preference_roundtrip(&runtime).await;
+    runtime_checks::owner_directed_composition::measure_owner_composition_boundary(
+        &runtime, backend,
+    )
+    .await;
+    runtime_checks::owner_directed_composition::retained_visualizer_successor_preserves_established_version(&runtime).await;
 }

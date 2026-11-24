@@ -1,10 +1,10 @@
 {
   "holons": [
     {
-      "key": "MAP Meta Design System Schema-v0.1.0",
+      "key": "MAP Meta Design System Schema-v0.1.4",
       "type": "Schema.HolonType",
       "properties": {
-        "SchemaName": "MAP Meta Design System Schema-v0.1.0",
+        "SchemaName": "MAP Meta Design System Schema-v0.1.4",
         "Description": "MAP schema for versioned Meta Design Systems that define reusable semantic DesignToken vocabularies."
       },
       "relationships": [
@@ -12,10 +12,10 @@
           "name": "DependsOn",
           "target": [
             {
-              "$ref": "MAP Core Schema-v0.0.7"
+              "$ref": "MAP Core Schema-v0.0.11"
             },
             {
-              "$ref": "MAP Design Tokens Schema-v0.1.0"
+              "$ref": "MAP Design Tokens Schema-v0.1.4"
             }
           ]
         },
@@ -52,7 +52,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Meta Design System Schema-v0.1.0"
+              "$ref": "MAP Meta Design System Schema-v0.1.4"
             }
           ]
         },
@@ -109,7 +109,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Meta Design System Schema-v0.1.0"
+              "$ref": "MAP Meta Design System Schema-v0.1.4"
             }
           ]
         },
@@ -228,6 +228,9 @@
             },
             {
               "$ref": "CanvasFontFamily.DesignToken"
+            },
+            {
+              "$ref": "CanvasHeadingFontFamily.DesignToken"
             },
             {
               "$ref": "CanvasFontSize.DesignToken"
@@ -367,7 +370,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Meta Design System Schema-v0.1.0"
+              "$ref": "MAP Meta Design System Schema-v0.1.4"
             }
           ]
         },
@@ -437,7 +440,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Meta Design System Schema-v0.1.0"
+              "$ref": "MAP Meta Design System Schema-v0.1.4"
             }
           ]
         },
@@ -499,7 +502,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Meta Design System Schema-v0.1.0"
+              "$ref": "MAP Meta Design System Schema-v0.1.4"
             }
           ]
         },

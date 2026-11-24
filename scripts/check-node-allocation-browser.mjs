@@ -141,7 +141,7 @@ try {
     const restored = await page.evaluate(() => window.allocationFixture.restoreVerticalRoot());
     if (restored.modes.join(',') !== 'collection,compact,compact') throw new Error(`Restore left descendants expanded: ${restored.modes}`);
     const width = await page.evaluate(() => window.allocationFixture.narrowPathViewport());
-    if (width.before !== width.after) throw new Error(`Single column shrank with unused space: ${width.before} -> ${width.after}`);
+    if (width.before !== width.after) throw new Error(`Single column shrank despite space for its preferred grant: ${JSON.stringify(width)}`);
   }
   const horizontal = await page.evaluate(() => window.allocationFixture.mountHorizontalPath());
   if (!horizontal.inbound.some(([source, target]) => source === '0' && target === '1') || horizontal.connectors !== 3) throw new Error('Missing actual inbound edge at left boundary');
@@ -181,9 +181,13 @@ try {
     if (process.env.MAP_ALLOCATION_SCREENSHOT_MODE === 'compact-tall') await page.evaluate(() => window.allocationFixture.mountCompactAspect('generic', 96, 480, 1));
     else if (process.env.MAP_ALLOCATION_SCREENSHOT_MODE === 'edge') await page.evaluate(() => window.allocationFixture.mountHorizontalPath());
     else await page.evaluate(mode => window.allocationFixture.mount('generic', mode, 1, mode === 'collection', 'preferred'), process.env.MAP_ALLOCATION_SCREENSHOT_MODE || 'properties');
-    // Preview the authored surfaces against both shipped palettes, not fixture grays.
-    const themeSource = await readFile(join(root, 'schema-src/theme/schema.tdl'), 'utf8');
-    for (const theme of ['DeepOcean', 'WarmParchment']) {
+    // Preview the authored surfaces against each shipped palette, not fixture grays.
+    for (const [theme, filename, suffix] of [
+      ['DeepOcean', 'deep-ocean', ''],
+      ['WarmParchment', 'warm-parchment', '-warm'],
+      ['ForestSanctuary', 'forest-sanctuary', '-forest'],
+    ]) {
+      const themeSource = await readFile(join(root, `schema-src/theme/${filename}.tdl`), 'utf8');
       const properties = {};
       const assignments = new RegExp(`instance Demo1\\.${theme}Theme[^ ]+ \\{([\\s\\S]*?)\\n\\}`, 'g');
       for (const match of themeSource.matchAll(assignments)) {
@@ -196,10 +200,69 @@ try {
         document.body.style.background = 'var(--dahn-canvas-surface-background)';
         document.body.style.color = 'var(--dahn-canvas-text-color)';
       }, properties);
-      const path = theme === 'DeepOcean' ? process.env.MAP_ALLOCATION_SCREENSHOT : process.env.MAP_ALLOCATION_SCREENSHOT.replace(/\.png$/, '-warm.png');
+      const path = suffix ? process.env.MAP_ALLOCATION_SCREENSHOT.replace(/\.png$/, `${suffix}.png`) : process.env.MAP_ALLOCATION_SCREENSHOT;
       await page.screenshot({ path });
     }
   }
+  for (const scale of [1, 1.25, 2]) {
+    await page.evaluate(scale => window.allocationFixture.mountTableScroll(scale), scale);
+    const disclosure = await page.getByRole('button', { name: 'More columns', exact: true }).evaluate(button => {
+      const header = button.closest('thead').getBoundingClientRect();
+      const element = document.querySelector('[data-table-collection=viewport]');
+      const viewport = element.getBoundingClientRect();
+      const scale = viewport.width / element.offsetWidth;
+      const control = button.getBoundingClientRect();
+      return { top: control.top - header.top, right: viewport.left + (element.clientLeft + element.clientWidth) * scale - control.right, width: control.width };
+    });
+    if (scale === 1 && process.env.MAP_TABLE_HEADER_SCREENSHOT) await page.screenshot({ path: process.env.MAP_TABLE_HEADER_SCREENSHOT });
+    if (disclosure.top < -1 || disclosure.top > 12 * scale || disclosure.right < 0 || disclosure.right > 12 * scale || disclosure.width < 40 * scale) {
+      throw new Error(`Table header disclosure @${scale}: ${JSON.stringify(disclosure)}`);
+    }
+    await page.getByRole('button', { name: 'More columns', exact: true }).click();
+    await page.evaluate(() => {
+      const viewport = document.querySelector('[data-table-collection=viewport]');
+      viewport.scrollLeft = 240; viewport.scrollTop = 180;
+    });
+    await page.evaluate(() => new Promise(requestAnimationFrame));
+    const sticky = await page.evaluate(() => {
+      const viewport = document.querySelector('[data-table-collection=viewport]');
+      const headers = [...document.querySelectorAll('th')], cells = [...document.querySelector('tbody tr').cells];
+      const corner = headers[0].getBoundingClientRect(), port = viewport.getBoundingClientRect();
+      return { scrollLeft: viewport.scrollLeft, scrollTop: viewport.scrollTop,
+        top: Math.abs(corner.top - port.top), left: Math.abs(corner.left - port.left),
+        columns: headers.map((header, n) => Math.abs(header.getBoundingClientRect().left - cells[n].getBoundingClientRect().left)),
+        pinned: document.elementFromPoint(corner.left + 3, corner.top + 3)?.closest('th')?.dataset.columnId };
+    });
+    if (!sticky.scrollLeft || !sticky.scrollTop || sticky.top > 1 || sticky.left > 1 || sticky.columns.some(delta => delta > 1) || sticky.pinned !== 'Key') {
+      throw new Error(`Pinned table headers @${scale}: ${JSON.stringify(sticky)}`);
+    }
+  }
+  await page.evaluate(() => window.allocationFixture.mountVerticalPath(800));
+  // Capture the settled owner grant, rather than an in-flight traversal animation.
+  await page.evaluate(() => document.body.firstElementChild.stopTraversalTransition());
+  await page.evaluate(() => new Promise(requestAnimationFrame));
+  const baseline = await page.evaluate(() => {
+    const path = document.body.firstElementChild;
+    window.collectionNodeBeforeExpand = path.occurrences.find(item => item.element.dataset.inspectorMode === 'collection').element;
+    window.collectionBeforeExpand = window.collectionNodeBeforeExpand.querySelector('[aria-label="Non-table Collection"]');
+    return window.collectionNodeBeforeExpand.getBoundingClientRect().height;
+  });
+  await page.getByRole('button', { name: 'Expand collection to full size', exact: true }).click();
+  if (!await page.evaluate(height => document.body.firstElementChild.dataset.attentionOccurrence && window.collectionNodeBeforeExpand.getBoundingClientRect().height > height, baseline)) throw new Error('Collection did not enlarge into full-size attention');
+  await page.getByRole('button', { name: 'Restore collection size', exact: true }).click();
+  await page.evaluate(() => new Promise(requestAnimationFrame));
+  await page.evaluate(() => new Promise(requestAnimationFrame));
+  const restoredCollection = await page.evaluate(() => ({
+    attention: document.body.firstElementChild.dataset.attentionOccurrence,
+    connected: window.collectionBeforeExpand.isConnected,
+    mode: window.collectionNodeBeforeExpand.dataset.inspectorMode,
+    height: window.collectionNodeBeforeExpand.getBoundingClientRect().height,
+    scale: document.body.firstElementChild.view.scale,
+  }));
+  if (restoredCollection.attention || !restoredCollection.connected || restoredCollection.mode !== 'collection' || Math.abs(restoredCollection.height - baseline) > 1) throw new Error(`Collection restoration lost state or size: ${JSON.stringify({ baseline, ...restoredCollection })}`);
+  const single = await page.evaluate(() => window.allocationFixture.mountSingleCollectionPath());
+  if (single.width >= single.viewportWidth - 100 || single.height >= single.viewportHeight - 100) throw new Error(`Normal node allocation consumed navigation context: ${JSON.stringify(single)}`);
+  console.log('Pinned headers, horizontal Key alignment, full-size Collection attention and unused-space regression cases passed');
   if (errors.length) throw new Error(errors.join('\n'));
   console.log(`${cases} browser allocation/containment/keyboard cases, ${compactCases} Compact aspect-ratio cases and composed navigation/Collection-group cases passed`);
 } finally {

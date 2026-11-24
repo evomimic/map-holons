@@ -5,6 +5,7 @@
  * never on MAP SDK internal modules or transport-layer types.
  */
 export type {
+  CompositionBinding, CompositionMetadata, ResolvedComposition,
   VisualizerDiscovery,
   VisualizerSelectionRequest,
   VisualizerUsageSelection,

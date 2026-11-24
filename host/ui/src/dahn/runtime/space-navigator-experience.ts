@@ -1,5 +1,6 @@
 import { composeNodeActions } from './node-actions';
 import { composeNodeTitle } from './title-composition';
+import { prepareCompositionSubject } from './composition-subject';
 import { VISUALIZER_INFORMATION_EVENT, bindVisualizerInformationControl } from './visualizer-information-control';
 import { classifyNodeAffordances } from '../map-adapter/classify-node-affordances';
 import { NodeRelationshipDiscovery } from './relationship-discovery';
@@ -139,20 +140,34 @@ export class SpaceNavigatorExperience {
           if (!root.visualizerOperations) throw new Error('Selected result Node does not fulfill the Node Inspector allocation contract');
           const affordances = await classifyNodeAffordances(new DahnHolonView(subject));
           const discovery = new NodeRelationshipDiscovery(transaction, subject, affordances.singularRelationships);
-          const titleElement = await composeNodeTitle(transaction, materialized, transaction.bindSavedReference(visualizer), {
+          const owner = review.bindSavedReference(visualizer);
+          const compositionSubject = await prepareCompositionSubject(transaction, review, subject);
+          const composition = await review.resolveComposition(owner, compositionSubject, theme.reference);
+          const preparedRuntime = materialized.forComposition(composition);
+          const rootBinding = (role: string) => {
+            const bindings = composition.bindings.filter(binding => binding.parent === null && binding.owner.equals(owner) && binding.role === role);
+            if (bindings.length > 1) throw new Error(`Duplicate presented Node role ${role}`);
+            return bindings[0];
+          };
+          const titleBinding = rootBinding('titleBar');
+          const titleElement = titleBinding && await composeNodeTitle(transaction, preparedRuntime, owner, {
             title: 'Load Holons', target: { reference: subject }, holon: new DahnHolonView(subject), actions: [], theme, canvas,
-          });
-          const actionsElement = await composeNodeActions(transaction, materialized, transaction.bindSavedReference(visualizer), {
+          }, titleBinding);
+          const actionsElement = await composeNodeActions(transaction, preparedRuntime, owner, {
             target: { reference: subject }, holon: new DahnHolonView(subject), actions: [], theme, canvas,
-          });
+          }, { action: rootBinding('action'), visualizerActions: rootBinding('visualizerActions') });
+          const childVisualizers = new Map<string, HTMLElement>([['properties', children.get('properties')!.cloneNode(true) as HTMLElement]]);
+          if (titleElement) childVisualizers.set('titleBar', titleElement);
+          if (actionsElement.actions) childVisualizers.set('actions', actionsElement.actions);
+          if (actionsElement.controls) childVisualizers.set('visualizerActions', actionsElement.controls);
           root.setContext({ title: 'Load Holons', target: { reference: subject }, holon: new DahnHolonView(subject), actions: [], theme, canvas, visualizerUsage: usage,
-            childVisualizers: new Map([['titleBar', titleElement], ['actions', actionsElement], ['visualizerActions', actionsElement.controls], ['properties', children.get('properties')!.cloneNode(true) as HTMLElement]]),
+            childVisualizers,
             nodeAffordances: affordances, relationshipDiscovery: discovery,
             activateRelationship: affordance => root.dispatchEvent(new CustomEvent(TRAVERSE_RELATIONSHIP_EVENT, { bubbles: true, composed: true, detail: { source: root, affordance } })),
           });
           await materialized.admitOffered(root, visualizer);
           node = { element: root, ready: root.ready, collectionActivation: { ...collections, dispose: () => discovery.dispose() },
-            dispose: () => { (titleElement as VisualizerElement).dispose?.(); actionsElement.dispose(); discovery.dispose(); }, relationshipDiscovery: discovery, singularRelationships: affordances.singularRelationships, collectionAffordances: affordances.collections };
+            dispose: () => { (titleElement as VisualizerElement | undefined)?.dispose?.(); actionsElement.dispose(); discovery.dispose(); }, relationshipDiscovery: discovery, singularRelationships: affordances.singularRelationships, collectionAffordances: affordances.collections };
         } else {
           node = await realizeNode(transaction, materialized, subject, review.bindSavedReference(visualizer), theme, canvas, stage, undefined, review, usage);
           const activation = node.collectionActivation;
@@ -247,13 +262,6 @@ export class SpaceNavigatorExperience {
       const tag = defineCustomElementOnce('map-rooted-navigation-visualizer', implementation as CustomElementConstructor);
       const nodeSlot = await materialized.slot(selectedPath, 'node');
       if (!initial) selectedNode = (await transaction.selectVisualizer({ subject: anchor, slot: nodeSlot, owner: { visualizer: selectedPath }, theme: theme.reference, requestedKind: 'node' })).selected;
-      if (initial) {
-        await transaction.prepareVisualizerUsage({ subject: anchor, slot: nodeSlot, owner: { visualizer: selectedPath }, theme: theme.reference, requestedKind: 'node' }, selectedNode);
-        const roots = await dancer.relatedHolons('HasExperienceVisualizerSlot');
-        for (const slot of roots) if (await slot.key() === 'SpaceNavigator.RootedNavigationSlot') {
-          await transaction.prepareVisualizerUsage({ subject: anchor, slot, owner: { dancer }, theme: theme.reference, requestedKind: 'rootedNavigation' }, selectedPath);
-        }
-      }
       signal.throwIfAborted();
       const actionInteractions: ActionInteractions | undefined = this.binding.actionInteractions && {
         openLoadHolons: binding => this.binding.actionInteractions!.openLoadHolons({

@@ -1,4 +1,4 @@
-//! Graph-only siblings compose supported additions and reject unsupported overlap before writes.
+//! Graph-only membership changes, compatible siblings, and version-producing snapshots.
 use super::described_instance_helpers::add_described_instance;
 use core_types::CommitValidationViolationKind;
 use holons_core::core_shared_objects::holon::ValidationState;
@@ -24,6 +24,116 @@ pub fn commit_graph_then_version_fixture() -> Result<DancesTestCase, HolonError>
 }
 pub fn commit_version_then_graph_fixture() -> Result<DancesTestCase, HolonError> {
     graph_siblings("VersionThenGraph", false, false, Some(0))
+}
+
+/// General membership replacement, netted edits, and last-member removal through
+/// ordinary reference operations, with fresh forward/inverse workset verification.
+pub fn commit_relationship_removals_fixture() -> Result<DancesTestCase, HolonError> {
+    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(
+        "Commit recorded relationship removals",
+        "Graph-only changes remove saved memberships; new versions preserve their predecessor",
+    );
+    test_case.verify_committed_workset = true;
+    test_case.add_load_book_person_inverse_test_schema_step(None)?;
+    test_case.add_begin_transaction_step(None, None)?;
+    let mut source = add_described_instance(
+        &fixture_context,
+        &mut test_case,
+        &mut fixture_holons,
+        "Book.RelationshipRemovals",
+        "Title",
+        BOOK_DESCRIPTOR_KEY,
+    )?;
+    let mut targets = Vec::new();
+    for key in ["Title.PropertyType", "Name.PropertyType"] {
+        let stub = fixture_context.mutation().new_holon(Some(key.into()))?;
+        targets.push(test_case.add_lookup_saved_holon_by_key_step(
+            &mut fixture_holons,
+            stub,
+            key.into(),
+            None,
+            None,
+        )?);
+    }
+    source = test_case.add_add_related_holons_step(
+        &mut fixture_holons,
+        source,
+        "ReferencesProperty".to_relationship_name(),
+        vec![targets[0].clone()],
+        None,
+        None,
+    )?;
+    test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)?;
+    // Replace, remove-and-readd, clear, add into a successor, then remove while
+    // publishing another successor. The latter must not delete the prior version's edge.
+    for (remove, add, publish) in [
+        (Some(0), Some(1), false),
+        (Some(1), Some(1), false),
+        (Some(1), None, false),
+        (None, Some(0), true),
+        (Some(0), None, true),
+    ] {
+        test_case.add_begin_transaction_step(None, None)?;
+        source = test_case.add_stage_new_version_step(
+            &mut fixture_holons,
+            source,
+            None,
+            MapInteger(1),
+            None,
+            None,
+        )?;
+        if let Some(index) = remove {
+            source = test_case.add_remove_related_holons_step(
+                &mut fixture_holons,
+                source,
+                "ReferencesProperty".to_relationship_name(),
+                vec![targets[index].clone()],
+                None,
+                None,
+            )?;
+        }
+        if let Some(index) = add {
+            source = test_case.add_add_related_holons_step(
+                &mut fixture_holons,
+                source,
+                "ReferencesProperty".to_relationship_name(),
+                vec![targets[index].clone()],
+                None,
+                None,
+            )?;
+        }
+        if publish {
+            source = test_case.add_with_properties_step(
+                &mut fixture_holons,
+                source,
+                [(
+                    "Title".to_property_name(),
+                    format!("Successor with target {add:?}").to_base_value(),
+                )]
+                .into(),
+                None,
+                None,
+            )?;
+        }
+        test_case.add_commit_step_with_dispositions(
+            &mut fixture_holons,
+            ExpectedCommitStatus::Complete,
+            vec![ExpectedCommitCandidate::new(
+                source.clone(),
+                if publish {
+                    ExpectedDisposition::NewVersion
+                } else {
+                    ExpectedDisposition::GraphOnly
+                },
+            )],
+            vec![],
+            None,
+            None,
+        )?;
+        test_case.add_match_saved_content_step()?;
+    }
+    test_case.finalize(&fixture_context, &fixture_holons)?;
+    Ok(test_case)
 }
 
 fn graph_siblings(

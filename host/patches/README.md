@@ -1,8 +1,8 @@
 # Native dependency patches
 
 These native patches are explicitly selected by `host/Cargo.toml`. The root
-workspace also selects the same three Holochain crates for Sweettest coverage of
-the embedded-conductor backport. They do not change hApp/WASM dependencies.
+workspace also selects the same Holochain crates and Kitsune transport patch for
+Sweettest coverage of the embedded conductor. They do not change hApp/WASM dependencies.
 The root-only `portmapper` patch is not applied to the production host.
 
 ## `holochain_data` 0.7.1 — native queries and credential wrapping
@@ -128,3 +128,23 @@ both native patch declarations together and rerun the authenticated diagnostic,
 MAP integration suite, and native conductor/credential lifecycle tests.
 Do not discard the separate DHT migration or credential-wrapping requirements
 above when replacing these source copies. The backport adds no migration.
+
+## `kitsune2_transport_iroh` 0.5.2 — explicit gateway-discovery configuration
+
+Source: published crate 0.5.2, upstream Kitsune commit
+`bb8fa97146c169a141c1ea150e11a0090e3dc299`, `crates/transport_iroh`.
+Registry checksum: `a6f462639b92a749fac35b73345ebe407c60a53f986709abdf3edce29d656f76`.
+The published Apache-2.0 declaration is retained; `LICENSE-APACHE` supplies the
+standard license text. Registry bookkeeping and the nested lockfile are omitted.
+
+The [reviewable patch](kitsune2-port-mapping.patch) adds
+`irohTransport.enablePortMapping`, defaulting to true for upstream
+compatibility. False passes `PortmapperConfig::Disabled` to the Iroh endpoint,
+preventing UPnP/PCP/NAT-PMP gateway probes without disabling relay connectivity.
+MAP's native conductor config defaults it to false and preserves an explicit
+native opt-in for a networked experience. WebSocket mDNS remains disabled in the
+packaged backend-only profile. This is not a global offline mode.
+
+Both native workspaces select this patch; hApp/WASM dependencies are unchanged.
+Replace it when an upstream Kitsune release exposes equivalent configuration,
+retaining MAP's deferred default and rerunning native startup/network tests.

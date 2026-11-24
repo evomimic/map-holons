@@ -59,31 +59,7 @@ impl DescriptorRegistryWire {
         observer: &mut impl FnMut(&'static str),
         install: bool,
     ) -> Result<Arc<EffectiveHolonDescriptorRegistry>, HolonError> {
-        if !self.owner.is_restricted_cache_read()
-            || self.owner.is_bootstrap_provisioning()
-            || !self.owner.get_staged_holons().holons.is_empty()
-            || self
-                .owner
-                .get_transient_holons()
-                .holons
-                .values()
-                .any(|holon| !matches!(holon, crate::context_binding::HolonWire::Transient(_)))
-        {
-            return Err(HolonError::InvalidParameter(
-                "Registry owner must be restricted, non-provisioning and unstaged".into(),
-            ));
-        }
-        let expected_space = agent.get_space_holon()?.map(crate::HolonReferenceWire::from);
-        if self.owner.get_local_space_holon_wire() != expected_space {
-            return Err(HolonError::InvalidParameter(
-                "Registry owner belongs to a different HolonSpace".into(),
-            ));
-        }
-        let tx_id = self.owner.get_tx_id().ok_or_else(|| {
-            HolonError::InvalidParameter(
-                "Registry owner is missing its transaction identity".into(),
-            )
-        })?;
+        let tx_id = super::registry_owner::validate_registry_owner(&self.owner, agent)?;
         if install {
             EffectiveHolonDescriptorRegistry::restore_with_observer(
                 agent,
@@ -492,6 +468,7 @@ mod tests {
         use crate::envelopes::{DanceEnvelopeResponse, DanceResponseEnvelope};
         let (wire, _) = fixture()?;
         let envelope = DanceResponseEnvelope {
+            visualizer_evaluations: None,
             descriptor_registry: Some(wire),
             session: None,
             response: DanceEnvelopeResponse::Reference {
@@ -501,6 +478,275 @@ mod tests {
         let bytes = holochain_serialized_bytes::encode(&envelope).unwrap();
         let decoded: DanceResponseEnvelope = holochain_serialized_bytes::decode(&bytes).unwrap();
         assert_eq!(decoded, envelope);
+        Ok(())
+    }
+    fn evaluation_fixture() -> Result<
+        (
+            Arc<holons_core::dahn::evaluation_registry::VisualizerEvaluationRegistry>,
+            Arc<TransactionContext>,
+            holons_core::dahn::composition::CompositionRequest,
+            holons_core::dahn::composition::ResolvedComposition,
+            Arc<HolonSpaceManager>,
+        ),
+        HolonError,
+    > {
+        use holons_core::dahn::{composition::*, CompositionSubject};
+        let space = test_space();
+        let agent = space.get_transaction_manager().open_public_transaction(space.clone())?;
+        let saved = |version| -> HolonReference {
+            let mut properties = core_types::PropertyMap::from([(
+                core_types::PropertyName("Key".into()),
+                base_types::BaseValue::StringValue(format!("saved-{version}").into()),
+            )]);
+            if version == 6 {
+                for (name, value) in
+                    [("CompositionSubject", "OwnerSubject"), ("VisualizerKind", "TitleBar")]
+                {
+                    properties.insert(
+                        core_types::PropertyName(name.into()),
+                        base_types::BaseValue::EnumValue(base_types::MapEnumValue(value.into())),
+                    );
+                }
+            }
+            holons_core::SmartReference::new_with_properties(
+                agent.space_read_handle(),
+                HolonId::Local(LocalId(vec![version; 39])),
+                properties,
+            )
+            .into()
+        };
+        let mut subject = agent.mutation().new_holon(None)?;
+        subject.add_related_holons("DescribedBy", vec![saved(2)])?;
+        let subject: HolonReference = subject.into();
+        let request = CompositionRequest {
+            owner: saved(1),
+            subject: subject.clone(),
+            theme: saved(3),
+            demand_slot: None,
+            collection_source: None,
+        };
+        let references = vec![subject, saved(1), saved(2), saved(3), saved(4), saved(5), saved(6)];
+        let data = CompositionData {
+            bindings: vec![ChildBinding {
+                parent: None,
+                owner: 1,
+                slot: 6,
+                subject: 0,
+                subject_descriptor: 2,
+                subject_binding: CompositionSubject::OwnerSubject,
+                role: "titleBar".into(),
+                property_name: None,
+                label: None,
+                selected: 4,
+                implementation: 5,
+                usage: None,
+                reason: SelectionReason::PrescribedDefault,
+                governing_record: None,
+                configuration: std::collections::BTreeMap::from([(
+                    "format".into(),
+                    base_types::BaseValue::StringValue("original".into()),
+                )]),
+                required_operators: vec!["Title".into()],
+                offered_operators: vec!["Title".into()],
+            }],
+            theme: Some(3),
+            metadata: (1..7)
+                .map(|reference| CompositionMetadata {
+                    reference,
+                    key: Some(format!("exact-{reference}")),
+                    identity: format!("id-{reference}"),
+                    versioned_key: Some(format!("exact-{reference}@1")),
+                    properties: serde_json::json!({}),
+                })
+                .collect(),
+            populations: vec![CompositionPopulation {
+                source: 1,
+                relationship: "HasPersonalVisualizerPreference".into(),
+                members: vec![],
+            }],
+            ..Default::default()
+        };
+        let registry = Arc::new(
+            holons_core::dahn::evaluation_registry::VisualizerEvaluationRegistry::new(&space),
+        );
+        space.attach_visualizer_evaluations(&registry);
+        Ok((registry, agent, request, ResolvedComposition { references, data }, space))
+    }
+
+    #[test]
+    fn evaluation_rebinds_new_occurrences_and_reconstructs_exact_facts_after_retirement(
+    ) -> Result<(), HolonError> {
+        use crate::VisualizerEvaluationsWire;
+        let (registry, agent, request, result, space) = evaluation_fixture()?;
+        assert!(registry.retain(&request, &result, 0)?);
+        let original_carrier = VisualizerEvaluationsWire::capture(&registry)?;
+        let next = space.get_transaction_manager().open_public_transaction(space.clone())?;
+        let mut occurrence = next.mutation().new_holon(None)?;
+        occurrence.add_related_holons(
+            "DescribedBy",
+            vec![request.subject.holon_descriptor()?.holon().clone()],
+        )?;
+        let mut compatible = request.clone();
+        compatible.subject = occurrence.into();
+        agent.dispose()?;
+        // Both explicit eviction and the descriptor Session reset preserve the recipe.
+        registry.evict_projections()?;
+        next.space_read_handle().reset_session()?;
+        let restored = registry.acquire(&next, &compatible)?.expect("compatible occurrence");
+        assert_eq!(restored.references[restored.data.bindings[0].subject], compatible.subject);
+        assert_eq!(restored.references[4], result.references[4]);
+        assert_eq!(restored.references[5], result.references[5]);
+        assert_eq!(restored.data.bindings[0].configuration, result.data.bindings[0].configuration);
+        assert_eq!(
+            restored.data.bindings[0].required_operators,
+            result.data.bindings[0].required_operators
+        );
+        assert_eq!(restored.data.metadata, result.data.metadata);
+        assert_eq!(restored.data.populations, result.data.populations);
+        assert_eq!(restored.data.work.selections, 0);
+        assert_eq!(restored.data.work.personal_population_requests, 0);
+        let rebuilt_carrier = VisualizerEvaluationsWire::capture(&registry)?;
+        assert_ne!(original_carrier.owner.get_tx_id(), rebuilt_carrier.owner.get_tx_id());
+        assert_ne!(
+            crate::TransientReferenceWire::new(
+                original_carrier.owner.get_tx_id().unwrap(),
+                original_carrier.root
+            ),
+            crate::TransientReferenceWire::new(
+                rebuilt_carrier.owner.get_tx_id().unwrap(),
+                rebuilt_carrier.root
+            )
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn reconsideration_is_scoped_and_late_carriers_cannot_publish() -> Result<(), HolonError> {
+        use crate::VisualizerEvaluationsWire;
+        let (registry, agent, request, result, _space) = evaluation_fixture()?;
+        registry.retain(&request, &result, 0)?;
+        let mut other = request.clone();
+        other.owner = HolonReference::smart_from_id(
+            agent.space_read_handle(),
+            HolonId::Local(LocalId(vec![99; 39])),
+        );
+        registry.retain(&other, &result, 0)?;
+        let late = VisualizerEvaluationsWire::capture(&registry)?.bind(&agent)?;
+        registry.reconsider(&request)?;
+        assert!(registry.acquire(&agent, &request)?.is_none());
+        assert!(registry.acquire(&agent, &other)?.is_some());
+        assert!(matches!(registry.adopt(&late), Err(HolonError::InvalidState(_))));
+        assert!(matches!(registry.retain(&request, &result, 0), Err(HolonError::InvalidState(_))));
+        assert!(registry.acquire(&agent, &request)?.is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn evaluation_carrier_is_separate_from_descriptor_and_public_pools() -> Result<(), HolonError> {
+        use crate::{TransientReferenceWire, VisualizerEvaluationsWire};
+        let (registry, agent, request, result, _space) = evaluation_fixture()?;
+        let (descriptors, _) = fixture()?;
+        let descriptor_owner = descriptors.owner.get_tx_id().unwrap();
+        let descriptors = descriptors.restore(&agent)?;
+        registry.retain(&request, &result, 0)?;
+        let carrier = VisualizerEvaluationsWire::capture(&registry)?;
+        let owner = carrier.owner.get_tx_id().unwrap();
+        assert_ne!(owner, agent.tx_id());
+        assert_ne!(owner, descriptor_owner);
+        assert_eq!(carrier.owner.get_transient_holons().holons.len(), 1);
+        assert!(carrier.owner.get_staged_holons().holons.is_empty());
+        assert!(TransientReferenceWire::new(owner, carrier.root.clone()).bind(&agent).is_err());
+        assert!(agent
+            .descriptor_registry()
+            .unwrap()
+            .reference_owner(owner, &carrier.root)
+            .is_none());
+        let mut wrong = carrier.clone();
+        wrong.owner = SessionStateWire::from_context(&agent)?;
+        assert!(wrong.bind(&agent).is_err());
+        let mut wrong = carrier.clone();
+        wrong.owner = DescriptorRegistryWire::capture(&descriptors)?.unwrap().owner;
+        assert!(wrong.bind(&agent).is_err());
+        let bound = carrier.bind(&agent)?;
+        assert!(bound.acquire(&agent, &request)?.is_some());
+        Ok(())
+    }
+    #[test]
+    fn covered_slot_demand_reuses_hierarchy_until_that_demand_is_explicitly_reconsidered(
+    ) -> Result<(), HolonError> {
+        let (registry, agent, request, result, _space) = evaluation_fixture()?;
+        registry.retain(&request, &result, 0)?;
+        let mut demand = request.clone();
+        demand.demand_slot = Some(result.references[6].clone());
+        let acquired = registry.acquire(&agent, &demand)?.expect("covered Slot");
+        assert_eq!(acquired.data.bindings.len(), 1);
+        assert_eq!(acquired.data.work.selections, 0);
+        registry.reconsider(&demand)?;
+        assert!(registry.acquire(&agent, &demand)?.is_none());
+        assert!(
+            registry.acquire(&agent, &request)?.is_some(),
+            "another established scope remains intact"
+        );
+        Ok(())
+    }
+    #[test]
+    fn column_scope_distinguishes_value_types_and_reuses_compatible_property_occurrences(
+    ) -> Result<(), HolonError> {
+        let (registry, agent, mut request, mut result, _space) = evaluation_fixture()?;
+        let saved = |id| -> HolonReference {
+            holons_core::SmartReference::new_with_properties(
+                agent.space_read_handle(),
+                HolonId::Local(LocalId(vec![id; 39])),
+                core_types::PropertyMap::from([(
+                    core_types::PropertyName("Key".into()),
+                    base_types::BaseValue::StringValue(format!("type-{id}").into()),
+                )]),
+            )
+            .into()
+        };
+        let property = |value_type| -> Result<HolonReference, HolonError> {
+            let mut property = agent.mutation().new_holon(None)?;
+            property.add_related_holons("DescribedBy", vec![saved(2)])?;
+            property.add_related_holons("ValueType", vec![saved(value_type)])?;
+            Ok(property.into())
+        };
+        let slot: HolonReference = holons_core::SmartReference::new_with_properties(
+            agent.space_read_handle(),
+            HolonId::Local(LocalId(vec![7; 39])),
+            core_types::PropertyMap::from([
+                (
+                    core_types::PropertyName("Key".into()),
+                    base_types::BaseValue::StringValue("column-slot".into()),
+                ),
+                (
+                    core_types::PropertyName("CompositionSubject".into()),
+                    base_types::BaseValue::EnumValue(base_types::MapEnumValue(
+                        "OwnerSubject".into(),
+                    )),
+                ),
+                (
+                    core_types::PropertyName("VisualizerKind".into()),
+                    base_types::BaseValue::EnumValue(base_types::MapEnumValue("Value".into())),
+                ),
+            ]),
+        )
+        .into();
+        request.subject = property(11)?;
+        request.demand_slot = Some(slot.clone());
+        result.references[0] = request.subject.clone();
+        result.references[2] = saved(11);
+        result.references[6] = slot;
+        registry.retain(&request, &result, 0)?;
+        request.subject = property(12)?;
+        assert!(
+            registry.acquire(&agent, &request)?.is_none(),
+            "a new ValueType is uncovered demand"
+        );
+        request.subject = property(11)?;
+        let acquired = registry.acquire(&agent, &request)?.expect("same ValueType");
+        assert_eq!(acquired.references[0], request.subject);
+        assert_eq!(acquired.references[2], saved(11));
+        assert_eq!(acquired.data.work.selections, 0);
         Ok(())
     }
 }

@@ -20,3 +20,6 @@ pub use value_names::*;
 
 pub mod agent_space_names;
 pub use agent_space_names::*;
+
+pub mod dahn_names;
+pub use dahn_names::*;

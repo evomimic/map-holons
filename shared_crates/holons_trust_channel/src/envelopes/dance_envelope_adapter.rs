@@ -52,6 +52,7 @@ impl DanceEnvelopeAdapter {
         let request_wire = DanceRequestWire::from(&request);
         let session = Some(Self::attach_session_state(context)?);
         Ok(DanceRequestEnvelope {
+            visualizer_evaluations: None,
             request: DanceEnvelopeRequest::Legacy(request_wire),
             session,
             descriptor_registry,
@@ -63,7 +64,12 @@ impl DanceEnvelopeAdapter {
         context: &Arc<TransactionContext>,
         envelope: DanceResponseEnvelope,
     ) -> Result<DanceResponse, HolonError> {
-        let DanceResponseEnvelope { response, session, descriptor_registry } = envelope;
+        let DanceResponseEnvelope {
+            response,
+            session,
+            descriptor_registry,
+            visualizer_evaluations: _,
+        } = envelope;
         let session_state = session.ok_or_else(|| HolonError::InvalidWireFormat {
             wire_type: "InternalDanceResponseEnvelope".to_string(),
             reason: "Missing SessionStateWire".to_string(),

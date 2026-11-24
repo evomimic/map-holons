@@ -190,6 +190,7 @@ fn server_error_response_wire(msg: String) -> DanceResponseEnvelope {
         descriptor: None,
     };
     DanceResponseEnvelope {
+        visualizer_evaluations: None,
         descriptor_registry: None,
         response: holons_boundary::envelopes::DanceEnvelopeResponse::Legacy(response),
         session: None,

@@ -1,4 +1,5 @@
-import { createHolonDescriptorHandle, type HolonDescriptorHandle } from './descriptors';
+import { readCollectionElementProperties } from '../internal/commands/holon';
+import { createHolonDescriptorHandle, createPropertyDescriptorHandle, type PropertyDescriptorHandle, type HolonDescriptorHandle } from './descriptors';
 import type { DescribedHolonCollectionWire } from '../internal/wire-types/results';
 import type {
   HolonCollectionWire,
@@ -53,8 +54,17 @@ const describedCollectionWires = new WeakMap<DescribedHolonCollection, Described
 /** A producer-independent collection with an explicit declared element type. */
 export class DescribedHolonCollection extends HolonCollection {
   readonly elementType: HolonDescriptorHandle;
+  readonly #txId: TxId;
+
+  /** Rust distinguishes a HolonType instance contract from a descriptor-family target. */
+  async propertyDescriptors(): Promise<readonly PropertyDescriptorHandle[]> {
+    const wire = unwrapDescribedCollection(this);
+    const properties = await readCollectionElementProperties(this.#txId, wire.element_type);
+    return properties.members.map(reference => createPropertyDescriptorHandle(wrapHolonReference(this.#txId, reference)));
+  }
   constructor(txId: TxId, collection: DescribedHolonCollectionWire) {
     super(txId, collection.members);
+    this.#txId = txId;
     this.elementType = createHolonDescriptorHandle(wrapHolonReference(txId, collection.element_type));
     describedCollectionWires.set(this, collection);
   }

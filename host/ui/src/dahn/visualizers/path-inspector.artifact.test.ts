@@ -184,7 +184,7 @@ it('requests the fixed three-part preferred footprint without measuring descenda
   expect(context.height).toBeGreaterThanOrEqual(profile.vertical.minimum[1]);
 });
 
-it('uses available width for a single column when the information panel reduces the viewport', () => {
+it('keeps a single column bounded when the information panel reduces the viewport', () => {
   const { path } = fixture([node('A', 0, 1)], 'A', 1450);
   const initial = path.columnWidths[0];
   path.viewportWidth = 1080;

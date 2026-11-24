@@ -119,7 +119,8 @@ export default class NodeTitleBar extends HTMLElement {
 export function layoutTitleIdentity(element, identity, input) {
   Object.assign(element.style, { width: `${input.width}px`, height: `${input.height}px` });
   Object.assign(identity.style, { width: '100%', height: '100%', boxSizing: 'border-box',
-    fontSize: '1.125em', fontWeight: '700',
+    fontFamily: 'var(--dahn-canvas-heading-font-family)',
+    fontSize: input.width < 240 ? '0.875em' : '1.125em', fontWeight: '700',
     whiteSpace: input.requiresRestore ? 'normal' : 'nowrap', overflowWrap: 'anywhere',
     textOverflow: input.requiresRestore ? 'clip' : 'ellipsis' });
 }

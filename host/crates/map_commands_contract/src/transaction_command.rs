@@ -73,6 +73,23 @@ pub enum TransactionAction {
         invocation: DanceInvocation,
     },
 
+    RememberVisualizerPreference {
+        subject_type: HolonReference,
+        slot: Option<HolonReference>,
+        visualizer: HolonReference,
+        usage: Option<HolonReference>,
+    },
+    ConvertVisualizerSlotPreference {
+        preference: HolonReference,
+    },
+    /// Explicit agent request to evaluate this demand again; mounted state is unchanged.
+    ReconsiderComposition {
+        request: holons_core::dahn::composition::CompositionRequest,
+    },
+    ResolveComposition {
+        request: holons_core::dahn::composition::CompositionRequest,
+    },
+
     /// Load the selected Theme through its canonical guest Dance.
     LoadTheme {
         theme: HolonReference,
@@ -262,7 +279,9 @@ impl TransactionAction {
             }
             // Selection only reads the retained subject and descriptor graph.
             // Materialization still creates invocation holons and requires an open context.
-            TransactionAction::LoadTheme { .. }
+            TransactionAction::ReconsiderComposition { .. }
+            | TransactionAction::ResolveComposition { .. }
+            | TransactionAction::LoadTheme { .. }
             | TransactionAction::ProjectVisualizerDiscovery { .. } => {
                 CommandLifecyclePolicy::transaction_read_only()
             }
@@ -314,6 +333,8 @@ impl TransactionAction {
             | TransactionAction::StageNewFromClone { .. }
             | TransactionAction::StageNewVersion { .. }
             | TransactionAction::StageNewVersionFromId { .. }
+            | TransactionAction::RememberVisualizerPreference { .. }
+            | TransactionAction::ConvertVisualizerSlotPreference { .. }
             | TransactionAction::DeleteHolon { .. } => CommandLifecyclePolicy::mutating(),
         }
     }
@@ -332,6 +353,14 @@ impl TransactionAction {
             TransactionAction::Dance(_) => "dance",
             TransactionAction::DanceV2 { .. } => "dance_v2",
             TransactionAction::SelectCollectionVisualizer { .. } => "select_collection_visualizer",
+            TransactionAction::RememberVisualizerPreference { .. } => {
+                "remember_visualizer_preference"
+            }
+            TransactionAction::ConvertVisualizerSlotPreference { .. } => {
+                "convert_visualizer_slot_preference"
+            }
+            TransactionAction::ReconsiderComposition { .. } => "reconsider_composition",
+            TransactionAction::ResolveComposition { .. } => "resolve_composition",
             TransactionAction::LoadTheme { .. } => "load_theme",
             TransactionAction::SelectVisualizer { .. } => "select_visualizer",
             TransactionAction::ProjectVisualizerDiscovery { .. } => "project_visualizer_discovery",

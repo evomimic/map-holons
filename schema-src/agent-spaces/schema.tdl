@@ -1,5 +1,5 @@
-schema "MAP Agent Spaces Schema-v0.1.0" {
-  depends_on "MAP Core Schema-v0.0.7"
+schema "MAP Agent Spaces Schema-v0.1.4" {
+  depends_on "MAP Core Schema-v0.0.11"
   header {
     description: "Minimal Agent ontology and the sovereign interior association. AgentSpace, I-Space and We-Space are roles of an existing HolonSpace, not additional types."
   }
@@ -33,7 +33,7 @@ abstract holon BioSocialAgent.Agent {
 holon PersonAgent.BioSocialAgent {
   type MetaHolonType.MetaTypeDescriptor
   extends BioSocialAgent.Agent
-  instance_keyrule NoneRule.KeyRuleType
+  instance_keyrule PersonAgentName.FormatRule
   header {
     description: "A human being's sovereign digital extension in MAP, distinct from an informational Person holon."
     display_name: "Person Agent"
@@ -86,7 +86,7 @@ property LastName.PropertyType {
 
 instance PersonAgentName.FormatRule {
   type FormatRule.KeyRuleType
-  rule_of "MAP Agent Spaces Schema-v0.1.0"
+  rule_of "MAP Agent Spaces Schema-v0.1.4"
   TypeName "PersonAgentName"
   TemplateString "{0}.[1].[2]"
   relationships {

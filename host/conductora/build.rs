@@ -24,6 +24,10 @@ fn main() {
         "is_service_ready",
         "dispatch_map_command",
         "welcome_status",
+        "create_new_environment",
+        "saved_environments",
+        "activate_saved_environment",
+        "trash_saved_environment",
         "open_space_navigator",
         "constitute_personal_space",
     ];

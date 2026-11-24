@@ -1,3 +1,5 @@
+import TableCollection from '../../conductora/resources/dahn-visualizers/table-collection.js';
+import { resolvedChildBinding, resolvedComposition } from './resolved-composition';
 import { composeNodeActions } from '../src/dahn/runtime/node-actions';
 import { bindVisualizerInformationControl } from '../src/dahn/runtime/visualizer-information-control';
 import { composeNodeTitle } from '../src/dahn/runtime/title-composition';
@@ -15,13 +17,21 @@ const records = new Map<string, any>(schema.holons.map((record: any) => [record.
 const references = new Map<string, any>();
 function ref(key: string): any {
   if (!references.has(key)) references.set(key, { key: async () => key,
-    propertyValue: async (name: string) => ({ StringValue: records.get(key)?.properties?.[name] ?? key }),
-    relatedHolons: async (name: string) => (records.get(key)?.relationships?.find((edge: any) => edge.name === name)?.target ?? []).map((target: any) => ref(target.$ref)) });
+    versionedKey: async () => `${key}@allocation-fixture`,
+    equals: (other: any) => other === references.get(key),
+    propertyValue: async (name: string) => {
+      const value = records.get(key)?.properties?.[name];
+      return value === undefined ? null : { StringValue: value };
+    },
+    relatedHolons: async (name: string) => name === 'DescribedBy' && records.get(key)?.type
+      ? [ref(records.get(key).type)]
+      : (records.get(key)?.relationships?.find((edge: any) => edge.name === name)?.target ?? []).map((target: any) => ref(target.$ref)) });
   return references.get(key);
 }
 const subject = ref('allocation-fixture-subject');
 let titleChoice = 'NodeTitleBar.TitleBarVisualizer';
 const transaction: any = {
+  recordSelectedVisualizerUse: async () => {},
   selectVisualizer: async (request: any) => {
     const kind = request.requestedKind;
     const key = kind === 'titleBar' ? titleChoice : kind === 'actionBar' ? 'GenericActions.ActionBarVisualizer' : `${(await request.subject.key()).split('PresentationAction')[0]}Presentation.ActionVisualizer`;
@@ -55,7 +65,14 @@ export async function mount(kind: string, mode: string, textScale = 1, activeCol
   property.setContext({ title: 'Properties', childVisualizers: propertyChildren });
   await bindVisualizerInformationControl(property, transaction, subject, ref('HolonInspector.NodeVisualizer'), ref('HolonInspector.PropertyMapSlot'), ref('DefaultPropertyMapVisualizer.PropertyMapVisualizer'));
   const subjectActions = [{ id: 'fixture-load', kind: 'action', label: 'Load Holons', dance: ref('LoadHolons.DanceType') }, { id: 'fixture-query', kind: 'action', label: 'Query Dance', dance: ref('Query.DanceType') }];
-  const actions = await composeNodeActions(transaction, runtime, owner, { target: { reference: subject }, actions: subjectActions, theme: { reference: ref('fixture-theme') } } as any);
+  const prefix = kind === 'generic' ? 'HolonInspector' : 'LoadHolonsResult';
+  const titleBinding = resolvedChildBinding(owner, subject, ref(`${prefix}.TitleBarSlot`), 'titleBar', ref(titleChoice));
+  const bindings = {
+    action: resolvedChildBinding(owner, subject, ref(`${prefix}.ActionsSlot`), 'action', ref('GenericActions.ActionBarVisualizer')),
+    visualizerActions: resolvedChildBinding(owner, subject, ref(`${prefix}.VisualizerControlsSlot`), 'visualizerActions', ref('GenericActions.ActionBarVisualizer')),
+  };
+  const prepared = runtime.forComposition(resolvedComposition(ref('fixture-theme'), [titleBinding, ...Object.values(bindings)]));
+  const actions = await composeNodeActions(transaction, prepared, owner, { target: { reference: subject }, actions: subjectActions, theme: { reference: ref('fixture-theme') } } as any, bindings);
   const collection = document.createElement('nav'); collection.setAttribute('aria-label', 'Non-table Collection');
   collection.style.cssText = 'display:flex;flex-direction:column;min-height:0;min-width:0;overflow:auto;flex:1;';
   for (let index = 0; index < 30; index++) {
@@ -64,8 +81,8 @@ export async function mount(kind: string, mode: string, textScale = 1, activeCol
   }
   const context: any = { title: 'Holon: A long readable subject identity', holonKey, target: { reference: subject }, actions: [],
     theme: { reference: ref('fixture-theme') }, canvas: {}, nodeAffordances: { singularRelationships: ['Navigate singular relationship', 'Owned by', 'Described by', 'Version of', 'Source', 'Parent'].map(label => ({ label, relationship: {} })), collections: collectionLabels.map(label => ({ kind: 'relationship', label, relationship: {} })) }, collectionActivation: { activate: (affordance: any, _slot: any, publish: any) => publish({ state: 'resolved', affordance, content: collection }), dispose() {} }, relationshipDiscovery: { population: () => ({ state: 'populated', count: 1 }), subscribe: (listener: () => void) => { listener(); return () => {}; } }, activateRelationship: () => {},
-    childVisualizers: new Map([['properties', property], ...(activeCollection ? [['collections', collection]] : []), ['actions', actions], ['visualizerActions', actions.controls]]) };
-  const title = await composeNodeTitle(transaction, runtime, owner, context);
+    childVisualizers: new Map([['properties', property], ...(activeCollection ? [['collections', collection]] : []), ['actions', actions.actions], ['visualizerActions', actions.controls]]) };
+  const title = await composeNodeTitle(transaction, prepared, owner, context, titleBinding);
   context.childVisualizers.set('titleBar', title);
   node.setContext(context);
   node.setOccurrenceRestorationHandler(() => { node.dataset.restored = 'true'; node.dataset.restoreCount = String(Number(node.dataset.restoreCount || 0) + 1); });
@@ -191,7 +208,7 @@ export async function narrowPathViewport() {
   const before = path.columnWidths[0];
   path.style.width = '1080px';
   await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
-  return { before, after: path.columnWidths[0] };
+  return { before, after: path.columnWidths[0], viewportWidth: path.viewport.clientWidth };
 }
 export async function mountHorizontalPath() {
   document.body.replaceChildren();
@@ -269,4 +286,36 @@ export async function mountCompactAspect(kind: string, width: number, height: nu
     wrapped: getComputedStyle(identity).whiteSpace === 'normal', textFits: identity.scrollHeight <= identity.clientHeight + 1,
     failures: measure().failures };
 }
-(window as any).allocationFixture = { mountCollectionsIndex, collectionIndexState, descendFromRestoredMiddle, mountCompactAspect, mount, measure, reassign, historicalOverlapDetected, mountVerticalPath, restoreVerticalRoot, narrowPathViewport, mountHorizontalPath, selectPathOccurrence };
+/** Real table with the same selected-column inspection decoration used at runtime. */
+export async function mountTableScroll(scale = 1) {
+  document.body.replaceChildren();
+  const table: any = document.createElement(defineCustomElementOnce('fixture-scroll-table', TableCollection));
+  const host = document.createElement('section');
+  host.style.cssText = `display:flex;width:700px;height:320px;font:${14 * scale}px/1.5 system-ui;--dahn-table-cell-padding:.75rem;--dahn-table-cell-border-width:1px;--dahn-table-cell-border-style:solid;--dahn-table-cell-border-color:#667d65;--dahn-collection-surface-background:#1b2b20;--dahn-collection-text-color:#f1eddf;--dahn-table-header-surface-background:#28392d;--dahn-table-header-text-color:#f1eddf;`;
+  host.append(table); document.body.append(host);
+  table.setContext({ collectionPresentation: { kind: 'holon-property-map', displayName: 'Validation rules',
+    rowIds: Array.from({ length: 80 }, (_, n) => String(n)),
+    columns: ['Key', 'Semantic authority', 'Validation rule description', 'Determinism'].map((id, column) => ({ id,
+      displayName: id, valueType: 'StringValue', values: Array.from({ length: 80 }, (_, n) => ({ StringValue:
+        column === 0 ? `Rule.${String(n).padStart(3, '0')}.ValidationRule` : `${id}: a readable value for validation rule ${n}` })) })) } });
+  for (const header of table.querySelectorAll('th[data-column-id]')) {
+    await bindVisualizerInformationControl(header, transaction, subject, subject, subject, subject, 'end', undefined, 'String Value');
+  }
+  await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
+  table.fitColumns();
+}
+
+export async function mountSingleCollectionPath() {
+  await mountVerticalPath(800);
+  const path: any = document.body.firstElementChild;
+  const root = path.occurrences[0];
+  path.renderPath([root], { occurrenceId: root.id, mode: 'restore' });
+  path.stopTraversalTransition();
+  root.element.selectView('collection');
+  path.view.scale = 1; path.view.render(); path.view.position(0, 0);
+  await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
+  return { width: root.element.getBoundingClientRect().width, height: root.element.getBoundingClientRect().height,
+    viewportWidth: path.viewport.clientWidth, viewportHeight: path.viewport.clientHeight };
+}
+
+(window as any).allocationFixture = { mountTableScroll, mountSingleCollectionPath, mountCollectionsIndex, collectionIndexState, descendFromRestoredMiddle, mountCompactAspect, mount, measure, reassign, historicalOverlapDetected, mountVerticalPath, restoreVerticalRoot, narrowPathViewport, mountHorizontalPath, selectPathOccurrence };

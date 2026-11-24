@@ -158,3 +158,14 @@ it('allows an explicit supertype Usage selection without requesting subtype spec
     expect(api.specializeVisualizerUsage).not.toHaveBeenCalled();
   });
 });
+
+it('can present a default during an active round without creating configuration or remembering intent', async () => {
+  api.selectVisualizer.mockResolvedValue({ selected: { Smart: { holon_id: { Local: [8] }, smart_property_values: null } }, requested_kind: 'Node', alternatives_available: false, usage: null });
+  const tx = createMapTransaction(41);
+  await tx.withVisualizerUsageBatch(async () => {
+    const selection = await tx.selectVisualizer(request());
+    expect(selection.usage).toBeUndefined();
+    await tx.recordSelectedVisualizerUse(selection.selected,'default'); tx.confirmVisualizerUsagePresentation();
+  });
+  expect(api.selectVisualizerUsage).not.toHaveBeenCalled(); expect(api.recordVisualizerUse).not.toHaveBeenCalled();
+});

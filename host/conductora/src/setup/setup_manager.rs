@@ -141,7 +141,7 @@ impl SetupManager {
                     integration
                         .setup(handle, &name, &provider)
                         .await
-                        .map_err(|e| anyhow::anyhow!("{}/{}: {}", provider_type, name, e))
+                        .map_err(|e| e.context(format!("{}/{}", provider_type, name)))
                 }))
             })
             .collect();

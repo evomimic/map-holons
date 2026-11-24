@@ -1,6 +1,7 @@
 {
 	"$schema": "https://schema.tauri.app/config/2.0.0",
 	"productName": "Map Holons",
+	"mainBinaryName": "MAP",
 	"version": "1.0.0",
 	"identifier": "com.map-holons.tauri.dev",
 	"build": {
@@ -55,6 +56,8 @@
 		"shortDescription": "",
 		"longDescription": "",
 		"macOS": {
+			"bundleName": "MAP",
+			"infoPlist": "Info.plist",
 			"frameworks": [],
 			"minimumSystemVersion": "14.0",
 			"exceptionDomain": "",

@@ -16,7 +16,7 @@ export interface VisualizerMaterializer {
 }
 
 /**
- * Process-local cache keyed by a selected Visualizer's stable semantic key.
+ * Process-local cache keyed by a selected Visualizer's exact semantic version.
  *
  * It deliberately has no selector policy: cache misses return to
  * Rust through `VisualizerMaterializer`.
@@ -24,12 +24,15 @@ export interface VisualizerMaterializer {
 export class MaterializedVisualizerCache {
   private readonly modules = new Map<string, Promise<MaterializedVisualizerModule>>();
 
+  private readonly identities = new WeakMap<HolonReference, string>();
+  seedIdentity(reference: HolonReference, versionIdentity: string): void { this.identities.set(reference, versionIdentity); }
+
   constructor(private readonly materializer: VisualizerMaterializer) {}
 
   async get(selectedVisualizer: HolonReference): Promise<MaterializedVisualizerModule> {
     const active = performance.getEntriesByName('map.navigation.active', 'mark').at(-1) as PerformanceMark | undefined;
     const started = performance.now();
-    const key = await selectedVisualizer.key();
+    const key = this.identities.get(selectedVisualizer) ?? await selectedVisualizer.versionedKey();
     if (key === null) {
       throw new Error('A materialized Visualizer must have a stable semantic key');
     }

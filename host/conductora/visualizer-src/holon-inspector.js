@@ -92,7 +92,9 @@ export default class HolonInspectorElement extends HTMLElement {
     this.collectionTabBar.style.flex = '0 1 auto'; this.collectionTabBar.style.overflow = 'auto';
     this.collectionViewer.style.flex = '1 1 0'; this.collectionViewer.style.minHeight = '0'; this.collectionViewer.style.overflow = 'auto';
     this.titleBar.update({ width: layout.width, height: layout.title, mode: layout.mode, collapsed: this.collectionContext || ['relationship', 'compact'].includes(layout.mode) });
-    applyPaneControls({ root: this, heading: this.propertiesHeading, collections: this.collectionRegion, collectionTabs: this.collectionTabBar }, layout, () => this.adaptBudget());
+    applyPaneControls({ root: this, heading: this.propertiesHeading, collections: this.collectionRegion, collectionTabs: this.collectionTabBar,
+      collectionAttentionAvailable: !!this.occurrenceAttention, collectionMaximized: this.occurrenceMaximized,
+      requestCollectionAttention: operation => this.requestOccurrence(operation) }, layout, () => this.adaptBudget());
     this.updateMaximizeControls();
     if ([this.body, this.propertyViewer, this.actionBar, this.collectionRegion, this.singleValueRail].some(region => region.inert && region.contains(active))) this.titleControl.focus();
     if (this.isConnected) this.scheduleLayout();
@@ -453,7 +455,7 @@ export default class HolonInspectorElement extends HTMLElement {
     propertiesHeading.dataset.propertiesTitleBar = 'true';
     propertiesHeading.style.cssText = 'grid-column:1 / -1;grid-row:1;display:flex;align-items:center;min-width:0;min-height:0;';
     const propertiesLabel = document.createElement('span'); propertiesLabel.textContent = 'Properties';
-    propertiesLabel.style.cssText = 'flex:1;min-width:0;padding:0 .75rem;font-weight:600;';
+    propertiesLabel.style.cssText = 'font-family:var(--dahn-canvas-heading-font-family);flex:1;min-width:0;padding:0 .75rem;font-weight:600;';
     this.propertiesHeading.style.background = 'var(--dahn-action-surface-background)';
     this.propertiesHeading.append(propertiesLabel);
     createInspectionGroupHeader(this, () => this.selectView('properties'));

@@ -10,6 +10,8 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("Incompatible environment: {0}")]
+    IncompatibleEnvironment(String),
     #[error("Native conductor boundary: {0}")]
     NativeBoundary(String),
     #[error(transparent)]

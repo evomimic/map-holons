@@ -1,0 +1,44 @@
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -272,6 +272,12 @@
+         #[cfg_attr(feature = "schema", schemars(default))]
+         pub relay_allow_plain_text: bool,
+ 
++        /// Allow local gateway discovery and automatic UPnP/PCP/NAT-PMP mapping.
++        /// Defaults to true, preserving upstream transport behavior.
++        #[serde(default = "default_enable_port_mapping")]
++        #[cfg_attr(feature = "schema", schemars(default))]
++        pub enable_port_mapping: bool,
++
+         /// Set the maximum size in bytes for a frame that the transport
+         /// can transmit.
+         ///
+@@ -307,6 +313,10 @@
+         #[serde(default = "default_relay_keepalive_interval_s")]
+         #[cfg_attr(feature = "schema", schemars(default))]
+         pub relay_keepalive_interval_s: u32,
++    }
++
++    fn default_enable_port_mapping() -> bool {
++        true
+     }
+ 
+     fn default_relay_keepalive_interval_s() -> u32 {
+@@ -318,6 +328,7 @@
+             Self {
+                 relay_url: None,
+                 relay_allow_plain_text: false,
++                enable_port_mapping: default_enable_port_mapping(),
+                 max_frame_bytes: 100 * 1024 * 1024,
+                 connect_timeout_s: 60,
+                 auth_material_relay_base64: None,
+@@ -521,6 +532,9 @@
+             ))
+             .build();
+         builder = builder.transport_config(transport_config);
++        if !config.enable_port_mapping {
++            builder = builder.portmapper_config(iroh::endpoint::PortmapperConfig::Disabled);
++        }
+ 
+         // Set kitsune2 protocol for handling data.
+         builder = builder.alpns(vec![ALPN.to_vec()]);

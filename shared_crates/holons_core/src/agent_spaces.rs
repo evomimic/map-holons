@@ -1,20 +1,127 @@
 //! Agent Spaces domain operations through bound references; no execution authority is granted.
 use crate::{
-    core_shared_objects::transactions::TransactionContext, HolonReference, ReadableHolon,
-    RelationshipReadHint, StagedReference, WritableHolon,
+    core_shared_objects::transactions::TransactionContext, descriptors::Descriptor, HolonReference,
+    ReadableHolon, RelationshipReadHint, SmartReference, StagedReference, WritableHolon,
 };
-use base_types::MapString;
+use base_types::{MapString, ToBaseValue};
 use core_types::HolonError;
 use std::sync::Arc;
 use type_names::{
     AgentSpaceHolonTypeName, AgentSpacePropertyTypeName, AgentSpaceRelationshipTypeName,
 };
 
-/// Personal naming data, independent of keys, principal identifiers and authority.
+/// Personal naming inputs; a composed key grants no authority.
 pub struct PersonalName {
     pub last_name: MapString,
     pub first_name: Option<MapString>,
     pub middle_name: Option<MapString>,
+}
+
+impl PersonalName {
+    /// The PersonAgentName rule's last/first/middle order, omitting absent optional names.
+    pub fn person_key(&self) -> Result<MapString, HolonError> {
+        self.require_last_name()?;
+        Ok(MapString(
+            [Some(&self.last_name), self.first_name.as_ref(), self.middle_name.as_ref()]
+                .into_iter()
+                .flatten()
+                .map(|name| name.0.as_str())
+                .collect::<Vec<_>>()
+                .join("."),
+        ))
+    }
+
+    /// The personal Space's actual name and HolonSpaceNameRule key.
+    pub fn space_name(&self) -> Result<MapString, HolonError> {
+        self.require_last_name()?;
+        let full_name =
+            [self.first_name.as_ref(), self.middle_name.as_ref(), Some(&self.last_name)]
+                .into_iter()
+                .flatten()
+                .map(|name| name.0.as_str())
+                .collect::<Vec<_>>()
+                .join(" ");
+        Ok(MapString(format!("{full_name}'s Personal Space")))
+    }
+
+    fn require_last_name(&self) -> Result<(), HolonError> {
+        if self.last_name.0.trim().is_empty()
+            || [self.first_name.as_ref(), self.middle_name.as_ref()]
+                .into_iter()
+                .flatten()
+                .any(|name| name.0.trim().is_empty())
+        {
+            return Err(HolonError::InvalidParameter(
+                "Last name is required; absent optional names must be omitted".into(),
+            ));
+        }
+        Ok(())
+    }
+}
+
+/// Resolve the current saved Space version while retaining its adopted root for infrastructure.
+/// Follow persisted Successor references; an old key is historical discovery data,
+/// not an alias for a renamed head. Final lookup verifies the head is currently visible.
+pub fn current_personal_space(
+    context: &Arc<TransactionContext>,
+) -> Result<HolonReference, HolonError> {
+    let root = context.get_space_holon()?.ok_or_else(|| {
+        HolonError::InvalidState("Startup has not adopted a local HolonSpace".into())
+    })?;
+    let root_reference = SmartReference::new_from_id(context.space_read_handle(), root.holon_id()?);
+    let root_id = root_reference.lineage_root_id()?;
+    let mut visited = std::collections::HashSet::new();
+    let mut active_path = std::collections::HashSet::new();
+    let mut heads = Vec::new();
+    let mut pending = vec![(root_reference, false)];
+    while let Some((current, leaving)) = pending.pop() {
+        if leaving {
+            active_path.remove(&current.holon_id());
+            continue;
+        }
+        if active_path.contains(&current.holon_id()) || current.lineage_root_id()? != root_id {
+            return Err(HolonError::InvalidState("Invalid local Space successor lineage".into()));
+        }
+        if !visited.insert(current.holon_id()) {
+            continue;
+        }
+        active_path.insert(current.holon_id());
+        pending.push((current.clone(), true));
+        let successors = current.related_holons_with_hint(
+            type_names::CoreRelationshipTypeName::Successor,
+            RelationshipReadHint::RequireFresh,
+        )?;
+        let members = successors
+            .read()
+            .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?
+            .get_members()
+            .clone();
+        if members.is_empty() {
+            heads.push(current);
+        } else {
+            for next in members {
+                pending.push((
+                    SmartReference::new_from_id(context.space_read_handle(), next.holon_id()?),
+                    false,
+                ));
+            }
+        }
+    }
+    let [current] = heads.as_slice() else {
+        return Err(HolonError::InvalidState("Local Space has competing successor heads".into()));
+    };
+    if visited.len() == 1 {
+        return Ok(current.clone().into());
+    }
+    let key =
+        current.key()?.ok_or_else(|| HolonError::InvalidState("Local Space has no key".into()))?;
+    // Head verification is a new saved-state query. The Space read capability
+    // owns a separate, operation-bounded read transaction, even when the caller
+    // only retains a completed load's response in its committed transaction.
+    if context.space_read_handle().get_saved_holon_by_key(&key)?.holon_id() != current.holon_id() {
+        return Err(HolonError::InvalidState("Local Space head is not uniquely visible".into()));
+    }
+    Ok(current.clone().into())
 }
 
 /// Current saved sovereign membership, not proof of historical eligibility or authority.
@@ -44,7 +151,8 @@ pub fn sovereign_agent(space: &HolonReference) -> Result<SovereignAgent, HolonEr
     })
 }
 
-/// Stage a keyless PersonAgent and declared interior association in an ordinary empty transaction.
+/// Stage a named PersonAgent and its association with the existing Space.
+/// Space naming is a separate operation owned by the personal setup workflow.
 /// The caller owns authorization, Commit and retention for remediation/resubmission.
 pub fn stage_personal_agent(
     context: &Arc<TransactionContext>,
@@ -55,11 +163,7 @@ pub fn stage_personal_agent(
             "Initial PersonAgent creation requires an ordinary empty transaction; retained work must be remediated and resubmitted".into(),
         ));
     }
-    let space = context.get_space_holon()?.ok_or_else(|| {
-        HolonError::InvalidState(
-            "PersonAgent creation requires an existing local HolonSpace".into(),
-        )
-    })?;
+    let space = current_personal_space(context)?;
     if !matches!(sovereign_agent(&space)?, SovereignAgent::Unclaimed) {
         return Err(HolonError::InvalidState(
             "A sovereign association is already recorded; do not create another PersonAgent".into(),
@@ -69,11 +173,41 @@ pub fn stage_personal_agent(
         &AgentSpaceHolonTypeName::PersonAgent
             .descriptor_key(AgentSpaceHolonTypeName::BioSocialAgent),
     )?;
-    let mut transient = context.mutation().new_holon(None)?;
+    let person_key = names.person_key()?;
+    let mut transient = context.mutation().new_holon(Some(person_key))?;
     transient.with_descriptor(descriptor.into())?;
-    if !transient.effective_descriptor()?.effective_key_rule()?.is_keyless()? {
+    // This domain producer supports the configured personal-name contract. Reject
+    // other configurations rather than treating every keyed strategy as a name rule.
+    let selected_rule = transient.effective_descriptor()?.effective_key_rule()?;
+    let name_rule =
+        context.lookup().get_saved_holon_by_key(&"PersonAgentName.FormatRule".into())?;
+    if selected_rule.holon().holon_id()? != name_rule.holon_id()
+        || name_rule.property_value("TemplateString")? != Some("{0}.[1].[2]".to_base_value())
+    {
         return Err(HolonError::InvalidState(
-            "This installation's PersonAgent descriptor is not keyless; use compatible test state or explicitly update its schema".into(),
+            "Personal setup requires the configured PersonAgentName rule".into(),
+        ));
+    }
+    let parameters = name_rule.related_holons("TemplateParameters")?;
+    let parameters = parameters
+        .read()
+        .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?
+        .get_members()
+        .iter()
+        .map(|parameter| parameter.holon_id())
+        .collect::<Result<Vec<_>, _>>()?;
+    let expected = ["LastName.PropertyType", "FirstName.PropertyType", "MiddleName.PropertyType"]
+        .into_iter()
+        .map(|key| {
+            context
+                .lookup()
+                .get_saved_holon_by_key(&key.into())
+                .map(|parameter| parameter.holon_id())
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    if parameters != expected {
+        return Err(HolonError::InvalidState(
+            "Personal name rule parameters are incompatible".into(),
         ));
     }
     transient.with_property_value(AgentSpacePropertyTypeName::LastName, names.last_name)?;
@@ -99,6 +233,32 @@ mod tests {
     use core_types::{HolonId, LocalId, PropertyMap};
     use std::collections::HashMap;
     use type_names::ToRelationshipName;
+
+    #[test]
+    fn personal_identity_names_use_their_declared_orders_and_omit_absent_names() {
+        for (first, middle, person, space) in [
+            (None, None, "Melville", "Melville's Personal Space"),
+            (Some("Steve"), None, "Melville.Steve", "Steve Melville's Personal Space"),
+            (None, Some("James"), "Melville.James", "James Melville's Personal Space"),
+            (
+                Some("Steve"),
+                Some("James"),
+                "Melville.Steve.James",
+                "Steve James Melville's Personal Space",
+            ),
+        ] {
+            let names = PersonalName {
+                last_name: "Melville".into(),
+                first_name: first.map(MapString::from),
+                middle_name: middle.map(MapString::from),
+            };
+            assert_eq!(names.person_key().unwrap().0, person);
+            assert_eq!(names.space_name().unwrap().0, space);
+        }
+        let invalid = PersonalName { last_name: " ".into(), first_name: None, middle_name: None };
+        assert!(invalid.person_key().is_err());
+        assert!(invalid.space_name().is_err());
+    }
 
     #[test]
     fn sovereign_observation_refreshes_cached_absence_and_preserves_ambiguity(

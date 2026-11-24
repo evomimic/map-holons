@@ -247,12 +247,33 @@ impl CoreRelationshipTypeName {
 }
 
 /// Canonical DAHN relationship type names.
-#[derive(Debug, Clone, VariantNames)]
+#[derive(Debug, Clone, Copy, VariantNames)]
 pub enum DahnRelationshipTypeName {
+    CompositionSubject,
+    CompositionTheme,
+    RequestedCompositionSlot,
+    SelectedCollectionSource,
+    InitialCollectionSource,
+    CompositionReferences,
     AcceptsVisualizerType,
     HasApplicableVisualizer,
     HasSlot,
     ImplementedBy,
+    UsageForAgent,
+    HasPersonalVisualizerUsage,
+    PreferenceForAgent,
+    HasPersonalVisualizerPreference,
+    PreferenceForSubjectType,
+    PreferenceForSlot,
+    PreferredVisualizer,
+    PreferredUsage,
+    DefaultForSlot,
+    HasDefaultDeclaration,
+    RecommendsVisualizer,
+    DefaultForSubjectType,
+    UsesVisualizer,
+    ForSubjectType,
+    ApplicableToType,
 }
 
 impl DahnRelationshipTypeName {

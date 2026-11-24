@@ -5,7 +5,7 @@ import { semanticWork } from './semantic-work';
 import type { NodeRelationshipDiscovery } from './relationship-discovery';
 import { INSPECT_HOLON_EVENT, type InspectHolonIntent, type VisualizerContext } from '../contracts/visualizers';
 import type { CollectionAffordance } from '../contracts/affordances';
-import type { HolonReference, MapTransaction } from '../deps';
+import type { CompositionBinding, HolonReference, MapTransaction } from '../deps';
 import { realizeCollection, type CollectionElement } from './realize-collection';
 import type { MaterializedVisualizerRuntime } from './materialized-visualizer-runtime';
 
@@ -121,12 +121,57 @@ export class NodeCollectionActivation implements CollectionActivation {
 
   async settled(): Promise<void> { await this.preparation; if (this.preparationError) throw this.preparationError; }
 
+  /** Realize an owner's initial collection using the binding already resolved by Rust.
+   * Runs inside the caller's realization work, without scheduling nested exclusive work.
+   * The source identity must match a classified collection on this occurrence's subject.
+   */
+  async prepareInitial(binding: CompositionBinding): Promise<{ affordance: CollectionAffordance; element: CollectionElement }> {
+    if (this.content || this.selected || binding.subjectBinding !== 'SelectedCollection'
+      || !binding.owner.equals(this.parentVisualizer)) throw new Error('Invalid initial collection binding');
+    const source = this.materialized.metadata(binding.subject)?.identity;
+    if (!source) throw new Error('Initial collection binding has no source identity');
+    const matches: Extract<CollectionAffordance, { kind: 'relationship' }>[] = [];
+    for (const affordance of this.collections) {
+      if (affordance.kind === 'relationship' && await affordance.relationship.descriptor.identity() === source) matches.push(affordance);
+    }
+    if (matches.length !== 1) throw new Error('Initial collection source must identify one available collection');
+    const affordance = matches[0];
+    const work = semanticWork(this.transaction);
+    const revision = work.revision;
+    const generation = ++this.generation;
+    const current = () => !this.disposed && generation === this.generation && revision === work.revision;
+    const requireCurrent = () => { if (!current()) throw new Error('Initial collection realization was superseded'); };
+    const name = await affordance.relationship.descriptor.relationshipName();
+    requireCurrent();
+    const collection = await this.owner.describedRelatedHolons(name);
+    requireCurrent();
+    this.discovery?.record(affordance, collection.length);
+    const element = await realizeCollection(this.transaction, collection, this.parentVisualizer, binding.slot,
+      this.materialized, current, () => {}, this.presentation, this.valueContext, undefined, binding);
+    requireCurrent();
+    if (!element) throw new Error('Initial collection realization produced no element');
+    const isOrdered = await affordance.relationship.descriptor.isOrdered();
+    requireCurrent();
+    await element.setCollection(collection, affordance.label, { isOrdered });
+    await bindCollectionVisualizerInformation(element);
+    requireCurrent();
+    this.bindInspectHandler(element, generation, revision);
+    this.content = element;
+    this.selected = affordance;
+    this.selectedSlot = binding.role;
+    return { affordance, element };
+  }
+
   activate(affordance: CollectionAffordance, slotRole: string, publish: (update: CollectionUpdate) => void): boolean {
     if (this.disposed || semanticWork(this.transaction).paused || affordance.kind !== 'relationship') return false;
     if (this.selected === affordance && this.requested === affordance) return true;
     ++this.requestGeneration;
     this.requested = affordance;
-    if (this.selected === affordance && this.content) return true;
+    if (this.selected === affordance && this.content) {
+      this.presentationUpdate = publish;
+      publish({ state: 'loaded', content: this.content });
+      return true;
+    }
     this.load(affordance, slotRole, publish);
     return true;
   }
@@ -215,7 +260,7 @@ export class NodeCollectionActivation implements CollectionActivation {
               this.materialized, current, name => {
                 stage = name;
                 if (name === 'Artifact materialization') profile?.next('collection artifact materialization');
-              }, this.presentation, this.valueContext);
+              }, this.presentation, this.valueContext, { subject: this.owner, source: affordance.relationship.descriptor });
             if (!element) return;
             profile?.next('collection ordering');
             stage = 'Property retrieval / presentation';
@@ -229,12 +274,7 @@ export class NodeCollectionActivation implements CollectionActivation {
             element.restoreCollectionViewState?.(this.viewStates.get(affordance));
             if (!current()) return;
             if (typeof element.setInspectHolonHandler !== 'function') throw new Error('Selected implementation has no collection interaction binding');
-            element.setInspectHolonHandler(reference => {
-              if (this.disposed || bindingGeneration !== this.generation || revision !== work.revision || !element.isConnected) return;
-              element.dispatchEvent(new CustomEvent<InspectHolonIntent>(INSPECT_HOLON_EVENT, {
-                bubbles: true, composed: true, detail: { reference, source: element },
-              }));
-            });
+            this.bindInspectHandler(element, bindingGeneration, revision);
             this.content = element;
             this.pendingUpdate = undefined;
             publish({ state: 'loaded', content: element });
@@ -257,6 +297,16 @@ export class NodeCollectionActivation implements CollectionActivation {
         });
       }
     })();
+  }
+
+  /** Bind member intent to this live occurrence and revoke it on disposal or semantic change. */
+  private bindInspectHandler(element: CollectionElement, generation: number, revision: number): void {
+    element.setInspectHolonHandler(reference => {
+      if (this.disposed || generation !== this.generation || revision !== semanticWork(this.transaction).revision || !element.isConnected) return;
+      element.dispatchEvent(new CustomEvent<InspectHolonIntent>(INSPECT_HOLON_EVENT, {
+        bubbles: true, composed: true, detail: { reference, source: element },
+      }));
+    });
   }
 
   /** Release the current slot without disposing its reusable activation/discovery.

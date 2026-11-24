@@ -106,6 +106,8 @@ impl HolonServiceApi for Graph {
             "Dancer.HolonType" => 40,
             "RootedNavigationVisualizer.HolonType" => 41,
             "VisualizerUsage.HolonType" => 80,
+            "VisualizerPreference.HolonType" => 83,
+            "VisualizerSlotPreference.HolonType" => 85,
             _ => panic!("unexpected canonical role lookup {key}"),
         };
         match Self::reference(context, id) {
@@ -265,7 +267,7 @@ fn select(
     let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(graph),
-        None,
+        Some(HolonId::Local(LocalId(vec![254]))),
         ServiceRoutingPolicy::BlockExternal,
     );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
@@ -341,7 +343,7 @@ fn select_collection(
     let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(graph),
-        None,
+        Some(HolonId::Local(LocalId(vec![254]))),
         ServiceRoutingPolicy::BlockExternal,
     );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
@@ -398,7 +400,7 @@ fn slot_select_kind(
     let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(graph),
-        None,
+        Some(HolonId::Local(LocalId(vec![254]))),
         ServiceRoutingPolicy::BlockExternal,
     );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
@@ -535,7 +537,7 @@ fn home_select(graph: Graph) -> Result<Option<dahn_selection::HomeDancerSelectio
     let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(graph),
-        None,
+        Some(HolonId::Local(LocalId(vec![254]))),
         ServiceRoutingPolicy::BlockExternal,
     );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
@@ -560,7 +562,7 @@ fn home_dancer_selection_preserves_navigation_with_an_auxiliary_slot() {
 }
 
 #[test]
-fn home_selection_excludes_unavailable_or_theme_incompatible_navigation_candidates() {
+fn home_selection_filters_semantic_theme_but_not_local_artifact_readiness() {
     for unavailable in [false, true] {
         let mut graph = home_graph();
         graph.edge(45, "HasApplicableVisualizer", &[46, 49, 51, 52]);
@@ -571,16 +573,20 @@ fn home_selection_excludes_unavailable_or_theme_incompatible_navigation_candidat
         } else {
             graph.edge(52, "ConsumesDesignToken", &[99]);
         }
-        let selected = home_select(graph).unwrap().unwrap();
-        assert_eq!(
-            selected.rooted_navigation_visualizer.holon_id().unwrap().local_id().0,
-            vec![46]
-        );
+        if unavailable {
+            assert!(matches!(home_select(graph), Err(HolonError::MultipleRelatedHolons { .. })));
+        } else {
+            let selected = home_select(graph).unwrap().unwrap();
+            assert_eq!(
+                selected.rooted_navigation_visualizer.holon_id().unwrap().local_id().0,
+                vec![46]
+            );
+        }
     }
 }
 
 #[test]
-fn home_selection_rejects_an_unavailable_or_theme_incompatible_root_node() {
+fn home_selection_rejects_theme_incompatibility_but_defers_artifact_readiness() {
     for unavailable in [false, true] {
         let mut graph = home_graph();
         if unavailable {
@@ -588,12 +594,16 @@ fn home_selection_rejects_an_unavailable_or_theme_incompatible_root_node() {
         } else {
             graph.edge(49, "ConsumesDesignToken", &[99]);
         }
-        assert!(matches!(home_select(graph), Err(HolonError::NotImplemented(_))));
+        if unavailable {
+            assert!(home_select(graph).unwrap().is_some());
+        } else {
+            assert!(matches!(home_select(graph), Err(HolonError::NotImplemented(_))));
+        }
     }
 }
 
 #[test]
-fn home_selection_reuses_the_slots_eligible_usage_before_broad_discovery() {
+fn historical_slot_usage_does_not_manufacture_an_explicit_personal_preference() {
     let mut graph = home_graph();
     // Two broadly viable navigation candidates would be ambiguous without the Slot Usage.
     graph.edge(45, "HasApplicableVisualizer", &[46, 49, 52]);
@@ -605,8 +615,7 @@ fn home_selection_reuses_the_slots_eligible_usage_before_broad_discovery() {
     graph.edge(81, "ForSubjectType", &[45]);
     graph.edge(81, "SelectedForSlot", &[47]);
     graph.edge(46, "ApplicableToType", &[45]);
-    let selected = home_select(graph).unwrap().unwrap();
-    assert_eq!(selected.rooted_navigation_visualizer.holon_id().unwrap().local_id().0, vec![46]);
+    assert!(matches!(home_select(graph), Err(HolonError::MultipleRelatedHolons { .. })));
 }
 
 fn candidate_context(mut graph: Graph) -> Arc<TransactionContext> {
@@ -617,7 +626,7 @@ fn candidate_context(mut graph: Graph) -> Arc<TransactionContext> {
     let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(graph),
-        None,
+        Some(HolonId::Local(LocalId(vec![254]))),
         ServiceRoutingPolicy::BlockExternal,
     );
     space.get_transaction_manager().open_public_transaction(space.clone()).unwrap()
@@ -758,7 +767,7 @@ fn dancer_owner_uses_experience_slots_and_theme_tokens_are_exact_identities() {
 }
 
 #[test]
-fn discovery_excludes_other_slot_kinds_but_retains_unavailable_matching_candidates() {
+fn discovery_filters_other_slot_kinds_without_artifact_readiness_gating() {
     let mut graph = slot_graph();
     graph.edge(1, "HasApplicableVisualizer", &[20, 21, 22]);
     graph.edge(21, "DescribedBy", &[99]);
@@ -776,7 +785,7 @@ fn discovery_excludes_other_slot_kinds_but_retains_unavailable_matching_candidat
     );
     assert_eq!(
         discovery.candidates[1].assessment,
-        map_commands_contract::VisualizerAssessment::ImplementationUnavailable
+        map_commands_contract::VisualizerAssessment::Viable
     );
     assert!(dahn_selection::choose_visualizer(
         &context,
@@ -787,7 +796,7 @@ fn discovery_excludes_other_slot_kinds_but_retains_unavailable_matching_candidat
 }
 
 #[test]
-fn unavailable_local_artifacts_are_visible_but_cannot_be_chosen() {
+fn unavailable_local_artifacts_are_semantically_selectable_before_realization() {
     let mut graph = slot_graph();
     graph.edge(1, "HasApplicableVisualizer", &[20]);
     graph.edge(2, "HasApplicableVisualizer", &[22]);
@@ -797,18 +806,18 @@ fn unavailable_local_artifacts_are_visible_but_cannot_be_chosen() {
         dahn_selection::discover_visualizers(&context, candidate_request(&context), None).unwrap();
     assert_eq!(
         discovery.candidates[0].assessment,
-        map_commands_contract::VisualizerAssessment::ImplementationUnavailable
+        map_commands_contract::VisualizerAssessment::Viable
     );
     assert_eq!(
         dahn_selection::select_visualizer(&context, candidate_request(&context)).unwrap().selected,
-        Graph::reference(&context, 22)
+        Graph::reference(&context, 20)
     );
     assert!(dahn_selection::choose_visualizer(
         &context,
         candidate_request(&context),
         Graph::reference(&context, 20)
     )
-    .is_err());
+    .is_ok());
 }
 #[test]
 fn malformed_implementation_is_an_evaluation_error_not_a_rejection() {
@@ -823,7 +832,7 @@ fn malformed_implementation_is_an_evaluation_error_not_a_rejection() {
     let space = HolonSpaceManager::new_with_managers(
         None,
         Arc::new(malformed),
-        None,
+        Some(HolonId::Local(LocalId(vec![254]))),
         ServiceRoutingPolicy::BlockExternal,
     );
     let malformed_context =
@@ -989,4 +998,255 @@ fn composition_slots_propagates_resolution_errors_within_visualizer_family() {
     let context = candidate_context(graph);
     assert!(matches!(holons_core::dahn::composition_slots(&Graph::reference(&context, 1)),
         Err(HolonError::DescriptorDeclarationNotFound { name, .. }) if name == "HasSlot"));
+}
+
+fn prescribed_fixture(
+    conditions: &[Option<u8>],
+    incompatible: bool,
+) -> Result<(Arc<TransactionContext>, VisualizerSelectionRequest), HolonError> {
+    let mut graph = Graph::default();
+    graph.edge(1, "DescribedBy", &[2]);
+    graph.edge(2, "Extends", &[5]);
+    graph.edge(30, "AcceptsVisualizerType", &[10]);
+    graph.edge(40, "HasSlot", &[30]);
+    graph.edge(60, "ForMetaDesignSystem", &[61]);
+    // Unused alternatives would be ambiguous under ordinary discovery.
+    graph.edge(2, "HasApplicableVisualizer", &[20, 21]);
+    for candidate in [20, 21] {
+        graph.edge(candidate, "DescribedBy", &[10]);
+        graph.edge(candidate, "ImplementedBy", &[70]);
+        graph.edge(candidate, "ApplicableToType", &[5]);
+    }
+    if incompatible {
+        graph.edge(20, "DescribedBy", &[11]);
+    }
+    let ids: Vec<_> = (90..90 + conditions.len() as u8).collect();
+    graph.edge(30, "HasDefaultDeclaration", &ids);
+    for (&id, condition) in ids.iter().zip(conditions) {
+        graph.edge(id, "DefaultForSlot", &[30]);
+        graph.edge(id, "RecommendsVisualizer", &[20]);
+        if let Some(condition) = condition {
+            graph.edge(id, "DefaultForSubjectType", &[*condition]);
+        }
+    }
+    // An absent executable must not veto a semantically eligible prescription.
+    graph.unavailable.push(20);
+    let space = HolonSpaceManager::new_with_managers(
+        None,
+        Arc::new(graph),
+        Some(HolonId::Local(LocalId(vec![254]))),
+        ServiceRoutingPolicy::BlockExternal,
+    );
+    let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    let request = VisualizerSelectionRequest {
+        subject: Graph::reference(&context, 1),
+        requested_kind: VisualizerKind::PropertyMap,
+        owner: VisualizerOwner::Visualizer(Graph::reference(&context, 40)),
+        theme: Graph::reference(&context, 60),
+        slot: Graph::reference(&context, 30),
+    };
+    Ok((context, request))
+}
+
+#[test]
+fn prescribed_default_resolves_without_unused_candidate_ambiguity_or_artifact_readiness(
+) -> Result<(), HolonError> {
+    for condition in [Some(2), Some(5), None] {
+        let (context, request) = prescribed_fixture(&[condition], false)?;
+        let result = dahn_selection::select_visualizer(&context, request)?;
+        assert_eq!(result.selected.holon_id()?, HolonId::Local(LocalId(vec![20])));
+        assert!(result.usage.is_none());
+    }
+    Ok(())
+}
+
+#[test]
+fn duplicate_default_conditions_are_errors_including_general_defaults() -> Result<(), HolonError> {
+    for condition in [Some(2), None] {
+        let (context, request) = prescribed_fixture(&[condition, condition], false)?;
+        assert!(matches!(dahn_selection::select_visualizer(&context, request),
+            Err(HolonError::InvalidState(message)) if message.contains("Conflicting default")));
+    }
+    Ok(())
+}
+
+#[test]
+fn unusable_matching_default_does_not_fall_through_to_general_or_discovery(
+) -> Result<(), HolonError> {
+    let (context, request) = prescribed_fixture(&[Some(2), None], true)?;
+    assert!(matches!(dahn_selection::select_visualizer(&context, request),
+        Err(HolonError::InvalidState(message)) if message.contains("Unusable default")));
+    Ok(())
+}
+
+#[test]
+fn conditional_miss_uses_general_but_no_declaration_preserves_discovery_ambiguity(
+) -> Result<(), HolonError> {
+    let (context, request) = prescribed_fixture(&[Some(8), None], false)?;
+    assert_eq!(
+        dahn_selection::select_visualizer(&context, request)?.selected.holon_id()?,
+        HolonId::Local(LocalId(vec![20]))
+    );
+    let (context, request) = prescribed_fixture(&[], false)?;
+    assert!(matches!(
+        dahn_selection::select_visualizer(&context, request),
+        Err(HolonError::MultipleRelatedHolons { .. })
+    ));
+    Ok(())
+}
+
+fn personal_fixture(
+    local_override: bool,
+    with_usage: bool,
+    invalid_usage: bool,
+    duplicate: bool,
+) -> Result<(Arc<TransactionContext>, VisualizerSelectionRequest), HolonError> {
+    let mut graph = Graph::default();
+    graph.edge(100, "IsInteriorOf", &[101]);
+    graph.edge(
+        101,
+        "HasPersonalVisualizerPreference",
+        if duplicate || local_override { &[110, 111] } else { &[110] },
+    );
+    graph.edge(3, "ValueType", &[4]); // the declared Date type, independent of stored content
+    graph.edge(4, "Extends", &[5]);
+    graph.edge(40, "HasSlot", &[30, 31]);
+    for slot in [30, 31] {
+        graph.edge(slot, "AcceptsVisualizerType", &[12]);
+    }
+    graph.edge(60, "ForMetaDesignSystem", &[61]);
+    for visualizer in [20, 21] {
+        graph.edge(visualizer, "DescribedBy", &[12]);
+        graph.edge(visualizer, "ApplicableToType", &[5]);
+        graph.edge(visualizer, "ImplementedBy", &[70]);
+    }
+    for record in [110, 111] {
+        graph.edge(record, "DescribedBy", &[83]);
+        graph.edge(record, "PreferenceForAgent", &[101]);
+        graph.edge(record, "PreferenceForSubjectType", &[4]);
+        graph.edge(
+            record,
+            "PreferredVisualizer",
+            &[if record == 111 && local_override { 21 } else { 20 }],
+        );
+    }
+    if local_override {
+        graph.edge(111, "PreferenceForSlot", &[30]);
+    }
+    if with_usage {
+        graph.edge(110, "PreferredUsage", &[120]);
+        graph.edge(120, "UsageForAgent", &[if invalid_usage { 102 } else { 101 }]);
+        graph.edge(120, "UsesVisualizer", &[20]);
+        graph.edge(120, "ForSubjectType", &[5]); // broader configuration does not broaden choice
+    }
+    let space = HolonSpaceManager::new_with_managers(
+        None,
+        Arc::new(graph),
+        Some(HolonId::Local(LocalId(vec![100]))),
+        ServiceRoutingPolicy::BlockExternal,
+    );
+    let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    let request = VisualizerSelectionRequest {
+        subject: Graph::reference(&context, 3),
+        requested_kind: VisualizerKind::Value,
+        owner: VisualizerOwner::Visualizer(Graph::reference(&context, 40)),
+        slot: Graph::reference(&context, 30),
+        theme: Graph::reference(&context, 60),
+    };
+    Ok((context, request))
+}
+
+#[test]
+fn personal_date_choice_serves_two_slots_without_usage_and_local_override_stays_local(
+) -> Result<(), HolonError> {
+    for local in [false, true] {
+        let (context, mut request) = personal_fixture(local, false, false, false)?;
+        assert_eq!(
+            dahn_selection::select_visualizer(&context, request.clone())?.selected.holon_id()?,
+            HolonId::Local(LocalId(vec![if local { 21 } else { 20 }]))
+        );
+        request.slot = Graph::reference(&context, 31);
+        let selected = dahn_selection::select_visualizer(&context, request)?;
+        assert_eq!(selected.selected.holon_id()?, HolonId::Local(LocalId(vec![20])));
+        assert!(selected.usage.is_none());
+    }
+    Ok(())
+}
+
+#[test]
+fn preferred_configuration_is_optional_but_wrong_agent_and_scope_conflicts_fail(
+) -> Result<(), HolonError> {
+    let (context, request) = personal_fixture(false, true, false, false)?;
+    assert_eq!(
+        dahn_selection::select_visualizer(&context, request)?.selected.holon_id()?,
+        HolonId::Local(LocalId(vec![20]))
+    );
+    for (wrong_agent, duplicate) in [(true, false), (false, true)] {
+        let (context, request) = personal_fixture(false, wrong_agent, wrong_agent, duplicate)?;
+        assert!(matches!(
+            dahn_selection::select_visualizer(&context, request),
+            Err(HolonError::InvalidState(_))
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn missing_personal_context_is_not_a_confirmed_preference_absence() {
+    let space = HolonSpaceManager::new_with_managers(
+        None,
+        Arc::new(Graph::default()),
+        None,
+        ServiceRoutingPolicy::BlockExternal,
+    );
+    let context = space.get_transaction_manager().open_public_transaction(space.clone()).unwrap();
+    assert!(matches!(
+        holons_core::dahn::PersonalPreferences::for_context(&context),
+        Err(HolonError::InvalidState(_))
+    ));
+}
+
+#[test]
+fn slot_conversion_rejects_missing_scope_configuration_wrong_ownership_and_conflicts(
+) -> Result<(), HolonError> {
+    for scenario in ["missing-slot", "missing-usage", "wrong-space", "wrong-agent", "conflict"] {
+        let mut graph = Graph::default();
+        graph.edge(100, "IsInteriorOf", &[101]);
+        graph.edge(90, "DescribedBy", &[85]);
+        graph.edge(90, "OwnedBy", &[if scenario == "wrong-space" { 102 } else { 100 }]);
+        graph.edge(90, "PreferenceForSubjectType", &[4]);
+        if scenario != "missing-slot" {
+            graph.edge(90, "PreferenceForSlot", &[30]);
+        }
+        if scenario != "missing-usage" {
+            graph.edge(90, "PreferredUsage", &[120]);
+        }
+        graph.edge(120, "UsesVisualizer", &[20]);
+        graph.edge(120, "UsageForAgent", &[if scenario == "wrong-agent" { 102 } else { 101 }]);
+        if scenario == "conflict" {
+            graph.edge(101, "HasPersonalVisualizerPreference", &[110]);
+            graph.edge(110, "DescribedBy", &[83]);
+            graph.edge(110, "PreferenceForAgent", &[101]);
+            graph.edge(110, "PreferenceForSubjectType", &[4]);
+            graph.edge(110, "PreferenceForSlot", &[30]);
+            graph.edge(110, "PreferredVisualizer", &[21]);
+        }
+        let space = HolonSpaceManager::new_with_managers(
+            None,
+            Arc::new(graph),
+            Some(HolonId::Local(LocalId(vec![100]))),
+            ServiceRoutingPolicy::BlockExternal,
+        );
+        let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+        assert!(
+            holons_core::dahn::preferences::convert_slot_preference(
+                &context,
+                &Graph::reference(&context, 90)
+            )
+            .is_err(),
+            "{scenario}"
+        );
+        assert_eq!(context.lookup().staged_count()?, 0, "{scenario}");
+    }
+    Ok(())
 }

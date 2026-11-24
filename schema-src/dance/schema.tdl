@@ -5,8 +5,8 @@ meta {
   source_files: ["map-core-schema-dance-schema.csv","map-core-schema-loader-types.csv"]
   load_with: ["../core/root.json","../core/concrete-value-types.json","../core/keyrules.json","../core/property-types.json","../core/loader-types.json"]
 }
-schema "MAP Dance Schema-v0.1.0" {
-  depends_on "MAP Core Schema-v0.0.7"
+schema "MAP Dance Schema-v0.1.4" {
+  depends_on "MAP Core Schema-v0.0.11"
   header {
     description: "Schema containing MAP's Dance descriptors, affordance contracts, and loader dance response contract."
   }
@@ -14,7 +14,7 @@ schema "MAP Dance Schema-v0.1.0" {
 
 instance ImplementationName.FormatRule {
   type FormatRule.KeyRuleType
-  rule_of "MAP Dance Schema-v0.1.0"
+  rule_of "MAP Dance Schema-v0.1.4"
   TypeName "ImplementationName"
   TemplateString "{0}"
   relationships {

@@ -1,10 +1,10 @@
 {
   "holons": [
     {
-      "key": "MAP DAHN Schema-v0.1.0",
+      "key": "MAP DAHN Schema-v0.1.4",
       "type": "Schema.HolonType",
       "properties": {
-        "SchemaName": "MAP DAHN Schema-v0.1.0",
+        "SchemaName": "MAP DAHN Schema-v0.1.4",
         "Description": "Non-Core MAP schema for first-class Visualizer Holons, their executable realizations, and type-based applicability. Required/offered local Visualizer Operators govern composition compatibility. Visualizer Commons stewardship and dynamic acquisition remain deferred."
       },
       "relationships": [
@@ -12,16 +12,22 @@
           "name": "DependsOn",
           "target": [
             {
-              "$ref": "MAP Core Schema-v0.0.7"
+              "$ref": "MAP Core Schema-v0.0.11"
             },
             {
-              "$ref": "MAP Dance Schema-v0.1.0"
+              "$ref": "MAP Agent Spaces Schema-v0.1.4"
             },
             {
-              "$ref": "MAP Design Tokens Schema-v0.1.0"
+              "$ref": "MAP Dance Schema-v0.1.4"
             },
             {
-              "$ref": "MAP Meta Design System Schema-v0.1.0"
+              "$ref": "MAP Design Tokens Schema-v0.1.4"
+            },
+            {
+              "$ref": "MAP Meta Design System Schema-v0.1.4"
+            },
+            {
+              "$ref": "MAP Theme Schema-v0.1.4"
             }
           ]
         },
@@ -58,7 +64,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -109,7 +115,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -156,7 +162,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -234,7 +240,15 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "VisualizerKind.PropertyType"
             }
           ]
         },
@@ -281,7 +295,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -349,7 +363,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -382,7 +396,8 @@
         "TypeNamePlural": "CanvasVisualizers",
         "DisplayName": "Canvas Visualizer",
         "DisplayNamePlural": "Canvas Visualizers",
-        "Description": "Concrete Visualizer Holon Type for visualizers that compose a canvas experience."
+        "Description": "Concrete Visualizer Holon Type for visualizers that compose a canvas experience.",
+        "VisualizerKind": "Canvas"
       },
       "relationships": [
         {
@@ -397,7 +412,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -475,6 +490,9 @@
             },
             {
               "$ref": "CanvasFontFamily.DesignToken"
+            },
+            {
+              "$ref": "CanvasHeadingFontFamily.DesignToken"
             },
             {
               "$ref": "CanvasFontSize.DesignToken"
@@ -572,6 +590,9 @@
         {
           "name": "ConsumesDesignToken",
           "target": [
+            {
+              "$ref": "CanvasHeadingFontFamily.DesignToken"
+            },
             {
               "$ref": "RelationshipNavigationSurfaceBackground.DesignToken"
             },
@@ -688,10 +709,10 @@
       "key": "HolonInspector.PropertyMapSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
-        "CompositionActivation": "presentation",
-        "CompositionKind": "propertyMap",
+        "CompositionActivation": "Presentation",
         "CompositionRole": "propertyMap",
-        "CompositionSubject": "subject",
+        "CompositionSubject": "OwnerSubject",
+        "VisualizerKind": "PropertyMap",
         "VisualizerSlotDescription": "Show the details recorded for this item."
       },
       "relationships": [
@@ -717,10 +738,10 @@
       "key": "HolonInspector.ActionsSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
-        "CompositionActivation": "presentation",
-        "CompositionKind": "actionBar",
+        "CompositionActivation": "Presentation",
         "CompositionRole": "action",
-        "CompositionSubject": "subject",
+        "CompositionSubject": "OwnerSubject",
+        "VisualizerKind": "ActionBar",
         "VisualizerSlotDescription": "Show the actions available for this item and provide access to them."
       },
       "relationships": [
@@ -754,10 +775,10 @@
       "key": "HolonInspector.VisualizerControlsSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
-        "CompositionActivation": "presentation",
-        "CompositionKind": "actionBar",
+        "CompositionActivation": "Presentation",
         "CompositionRole": "visualizerActions",
-        "CompositionSubject": "subject",
+        "CompositionSubject": "OwnerSubject",
+        "VisualizerKind": "ActionBar",
         "VisualizerSlotDescription": "Present the centrally declared Visualizer controls within the title band."
       },
       "relationships": [
@@ -799,10 +820,10 @@
       "key": "HolonInspector.CollectionsSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
-        "CompositionActivation": "demand",
-        "CompositionKind": "collection",
+        "CompositionActivation": "Demand",
         "CompositionRole": "collection",
-        "CompositionSubject": "subject",
+        "CompositionSubject": "SelectedCollection",
+        "VisualizerKind": "Collection",
         "VisualizerSlotDescription": "Present a group of related items so you can examine its members and open an item."
       },
       "relationships": [
@@ -828,10 +849,10 @@
       "key": "HolonInspector.SingleValueSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
-        "CompositionActivation": "demand",
-        "CompositionKind": "node",
+        "CompositionActivation": "Demand",
         "CompositionRole": "singleValue",
-        "CompositionSubject": "subject",
+        "CompositionSubject": "OwnerSubject",
+        "VisualizerKind": "Node",
         "VisualizerSlotDescription": "Inspect the item reached through a connection that has a single destination."
       },
       "relationships": [
@@ -970,7 +991,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:9de27a68c7966a817d354cbaee63deadf0999c273fa4ebc48d857fb92ad3b9ac",
+        "VisualizerArtifactDigest": "sha256:d0e70a31a5b7f50227f59da0bb9cca7739d862e80329b100f877fb9106173377",
         "VisualizerImplementationKey": "dahn.holon-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -994,7 +1015,8 @@
         "TypeNamePlural": "NodeVisualizers",
         "DisplayName": "Node Visualizer",
         "DisplayNamePlural": "Node Visualizers",
-        "Description": "Concrete Visualizer Holon Type for visualizers that represent individual holons."
+        "Description": "Concrete Visualizer Holon Type for visualizers that represent individual holons.",
+        "VisualizerKind": "Node"
       },
       "relationships": [
         {
@@ -1009,7 +1031,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -1031,7 +1053,8 @@
         "TypeNamePlural": "StructureVisualizers",
         "DisplayName": "Structure Visualizer",
         "DisplayNamePlural": "Structure Visualizers",
-        "Description": "Concrete Visualizer Holon Type for visualizers that realize a multi-Holon semantic structure organized by a topology."
+        "Description": "Concrete Visualizer Holon Type for visualizers that realize a multi-Holon semantic structure organized by a topology.",
+        "VisualizerKind": "Structure"
       },
       "relationships": [
         {
@@ -1046,7 +1069,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -1068,7 +1091,8 @@
         "TypeNamePlural": "RootedNavigationVisualizers",
         "DisplayName": "Rooted Navigation Visualizer",
         "DisplayNamePlural": "Rooted Navigation Visualizers",
-        "Description": "Structure Visualizer subkind for interaction-derived navigation rooted at one Holon."
+        "Description": "Structure Visualizer subkind for interaction-derived navigation rooted at one Holon.",
+        "VisualizerKind": "RootedNavigation"
       },
       "relationships": [
         {
@@ -1083,7 +1107,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -1182,10 +1206,10 @@
       "key": "PathInspector.RootNodeSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
-        "CompositionActivation": "demand",
-        "CompositionKind": "node",
+        "CompositionActivation": "Demand",
         "CompositionRole": "node",
-        "CompositionSubject": "subject",
+        "CompositionSubject": "OwnerSubject",
+        "VisualizerKind": "Node",
         "VisualizerSlotDescription": "Show an item’s details, provide access to its actions, and let you explore its connections."
       },
       "relationships": [
@@ -1220,7 +1244,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:2717f8816c649d4fb93ebacbb50e391772f127ce2823ee976f5a3a6959b8e167",
+        "VisualizerArtifactDigest": "sha256:1e4009784a9a3310c0160796fdd7080969cbf56f1112c773dc9beb6d2857dd16",
         "VisualizerImplementationKey": "dahn.path-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -1244,7 +1268,8 @@
         "TypeNamePlural": "CollectionVisualizers",
         "DisplayName": "Collection Visualizer",
         "DisplayNamePlural": "Collection Visualizers",
-        "Description": "Concrete Visualizer Holon Type for visualizers that represent holon collections."
+        "Description": "Concrete Visualizer Holon Type for visualizers that represent holon collections.",
+        "VisualizerKind": "Collection"
       },
       "relationships": [
         {
@@ -1259,7 +1284,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -1281,7 +1306,8 @@
         "TypeNamePlural": "PropertyMapVisualizers",
         "DisplayName": "Property Map Visualizer",
         "DisplayNamePlural": "Property Map Visualizers",
-        "Description": "Concrete Visualizer Holon Type for visualizers that represent a set of Properties within one presentation strategy."
+        "Description": "Concrete Visualizer Holon Type for visualizers that represent a set of Properties within one presentation strategy.",
+        "VisualizerKind": "PropertyMap"
       },
       "relationships": [
         {
@@ -1296,7 +1322,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -1333,7 +1359,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -1388,6 +1414,12 @@
               "$ref": "MutedTextColor.DesignToken"
             },
             {
+              "$ref": "PropertyColumnGap.DesignToken"
+            },
+            {
+              "$ref": "PropertyNameMinWidth.DesignToken"
+            },
+            {
               "$ref": "PropertiesDisclosureFocusColor.DesignToken"
             },
             {
@@ -1435,10 +1467,10 @@
       "key": "DefaultPropertyMapVisualizer.PropertySlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
-        "CompositionActivation": "presentation",
-        "CompositionKind": "property",
+        "CompositionActivation": "Presentation",
         "CompositionRole": "property",
-        "CompositionSubject": "scalarProperties",
+        "CompositionSubject": "ScalarPropertyValue",
+        "VisualizerKind": "Value",
         "VisualizerSlotDescription": "Identify one property and present its value."
       },
       "relationships": [
@@ -1465,7 +1497,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:2a77eca9141a2066b8f8bd528085b6cef2d30a12348439641c22994d62c0c769",
+        "VisualizerArtifactDigest": "sha256:af6f63d46ded3dbf5045b14beb89308edbfc2474abb21e0a40e5a97460e0bd28",
         "VisualizerImplementationKey": "dahn.properties",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -1533,10 +1565,10 @@
       "key": "GenericProperty.ValueSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
-        "CompositionActivation": "presentation",
-        "CompositionKind": "value",
+        "CompositionActivation": "Presentation",
         "CompositionRole": "value",
-        "CompositionSubject": "subject",
+        "CompositionSubject": "OwnerSubject",
+        "VisualizerKind": "Value",
         "VisualizerSlotDescription": "Present this property’s value in a form suited to its value type."
       },
       "relationships": [
@@ -1587,7 +1619,8 @@
         "TypeNamePlural": "ValueVisualizers",
         "DisplayName": "Value Visualizer",
         "DisplayNamePlural": "Value Visualizers",
-        "Description": "Concrete Visualizer Holon Type for visualizers that represent values."
+        "Description": "Concrete Visualizer Holon Type for visualizers that represent values.",
+        "VisualizerKind": "Value"
       },
       "relationships": [
         {
@@ -1602,7 +1635,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -1818,7 +1851,8 @@
         "TypeNamePlural": "ActionBarVisualizers",
         "DisplayName": "Action Bar Visualizer",
         "DisplayNamePlural": "Action Bar Visualizers",
-        "Description": "Composes contextual actions into uniformly allocated slots and groups."
+        "Description": "Composes contextual actions into uniformly allocated slots and groups.",
+        "VisualizerKind": "ActionBar"
       },
       "relationships": [
         {
@@ -1833,7 +1867,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -1940,10 +1974,10 @@
       "key": "LoadHolons.DiagnosticsSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
-        "CompositionActivation": "demand",
-        "CompositionKind": "collection",
+        "CompositionActivation": "Demand",
         "CompositionRole": "diagnostics",
-        "CompositionSubject": "subject",
+        "CompositionSubject": "SelectedCollection",
+        "VisualizerKind": "Collection",
         "VisualizerSlotDescription": "Present the problems and validation findings from a data load so you can review what needs attention."
       },
       "relationships": [
@@ -1969,10 +2003,10 @@
       "key": "LoadHolons.CommittedHolonsSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
-        "CompositionActivation": "demand",
-        "CompositionKind": "collection",
+        "CompositionActivation": "Demand",
         "CompositionRole": "committed",
-        "CompositionSubject": "subject",
+        "CompositionSubject": "SelectedCollection",
+        "VisualizerKind": "Collection",
         "VisualizerSlotDescription": "Present the items saved by a data load so you can examine them and open an item."
       },
       "relationships": [
@@ -2023,7 +2057,8 @@
         "TypeNamePlural": "ActionVisualizers",
         "DisplayName": "Action Visualizer",
         "DisplayNamePlural": "Action Visualizers",
-        "Description": "Concrete Visualizer Holon Type for visualizers that represent actions."
+        "Description": "Concrete Visualizer Holon Type for visualizers that represent actions.",
+        "VisualizerKind": "Action"
       },
       "relationships": [
         {
@@ -2038,7 +2073,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -2075,7 +2110,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -2112,7 +2147,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -2169,7 +2204,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -2186,7 +2221,7 @@
               "$ref": "CompositionSubject.PropertyType"
             },
             {
-              "$ref": "CompositionKind.PropertyType"
+              "$ref": "VisualizerKind.PropertyType"
             },
             {
               "$ref": "CompositionActivation.PropertyType"
@@ -2196,6 +2231,9 @@
         {
           "name": "InstanceRelationships",
           "target": [
+            {
+              "$ref": "(VisualizerSlot.HolonType)-[InitialCollectionSource]->(RelationshipType.TypeDescriptor)"
+            },
             {
               "$ref": "(VisualizerSlot.HolonType)-[AcceptsVisualizerType]->(MetaVisualizerType.MetaHolonType)"
             },
@@ -2240,13 +2278,16 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
         {
           "name": "InstanceRelationships",
           "target": [
+            {
+              "$ref": "(VisualizerUsage.HolonType)-[UsageForAgent]->(PersonAgent.BioSocialAgent)"
+            },
             {
               "$ref": "(VisualizerUsage.HolonType)-[UsesVisualizer]->(Visualizer.HolonType)"
             },
@@ -2304,7 +2345,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -2374,7 +2415,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -2436,7 +2477,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -2507,7 +2548,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -2570,7 +2611,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -2640,7 +2681,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -2703,7 +2744,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -2773,7 +2814,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -2835,7 +2876,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -2905,7 +2946,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -2967,7 +3008,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -3037,7 +3078,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -3099,7 +3140,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -3145,7 +3186,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -3191,7 +3232,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -3237,7 +3278,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -3283,7 +3324,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -3328,7 +3369,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -3376,7 +3417,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -3413,7 +3454,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -3451,7 +3492,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -3521,7 +3562,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -3583,7 +3624,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -3653,7 +3694,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -3715,7 +3756,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -3785,7 +3826,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -3832,6 +3873,14 @@
       },
       "relationships": [
         {
+          "name": "ConsumesDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasHeadingFontFamily.DesignToken"
+            }
+          ]
+        },
+        {
           "name": "ImplementedBy",
           "target": [
             {
@@ -3877,7 +3926,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:9f1bf7200dac15ea1862bb8bdfdea93d44818ddd6bc15670b39c59a1c3dffae9",
+        "VisualizerArtifactDigest": "sha256:f3dab58a014a16aa270f101027c49370adb996ddcd9d873a3772148ef00860dc",
         "VisualizerImplementationKey": "dahn.load-holons-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -3897,10 +3946,10 @@
       "key": "LoadHolonsResult.PropertyMapSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
-        "CompositionActivation": "presentation",
-        "CompositionKind": "propertyMap",
+        "CompositionActivation": "Presentation",
         "CompositionRole": "propertyMap",
-        "CompositionSubject": "subject",
+        "CompositionSubject": "OwnerSubject",
+        "VisualizerKind": "PropertyMap",
         "VisualizerSlotDescription": "Explain the outcome of this data load, including its status and result counts."
       },
       "relationships": [
@@ -3926,10 +3975,10 @@
       "key": "LoadHolonsResult.ActionsSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
-        "CompositionActivation": "presentation",
-        "CompositionKind": "actionBar",
+        "CompositionActivation": "Presentation",
         "CompositionRole": "action",
-        "CompositionSubject": "subject",
+        "CompositionSubject": "OwnerSubject",
+        "VisualizerKind": "ActionBar",
         "VisualizerSlotDescription": "Provide access to the actions available for this load result."
       },
       "relationships": [
@@ -3963,10 +4012,10 @@
       "key": "LoadHolonsResult.VisualizerControlsSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
-        "CompositionActivation": "presentation",
-        "CompositionKind": "actionBar",
+        "CompositionActivation": "Presentation",
         "CompositionRole": "visualizerActions",
-        "CompositionSubject": "subject",
+        "CompositionSubject": "OwnerSubject",
+        "VisualizerKind": "ActionBar",
         "VisualizerSlotDescription": "Present the centrally declared Visualizer controls within the title band."
       },
       "relationships": [
@@ -4008,10 +4057,10 @@
       "key": "LoadHolonsResult.CollectionsSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
-        "CompositionActivation": "demand",
-        "CompositionKind": "collection",
+        "CompositionActivation": "Demand",
         "CompositionRole": "collection",
-        "CompositionSubject": "subject",
+        "CompositionSubject": "SelectedCollection",
+        "VisualizerKind": "Collection",
         "VisualizerSlotDescription": "Present a group of items related to this load result so you can examine them and open an item."
       },
       "relationships": [
@@ -4056,7 +4105,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -4101,7 +4150,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -4146,7 +4195,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -4198,7 +4247,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -4268,7 +4317,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -4330,7 +4379,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -4368,7 +4417,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -4438,7 +4487,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -4500,7 +4549,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -4538,7 +4587,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -4608,7 +4657,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -4670,7 +4719,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -4708,7 +4757,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -4778,7 +4827,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -4840,7 +4889,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -4878,7 +4927,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -4948,7 +4997,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -5010,7 +5059,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -5080,7 +5129,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -5142,7 +5191,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -5212,7 +5261,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -5274,7 +5323,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -5344,7 +5393,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -5405,7 +5454,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -5485,7 +5534,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -5538,7 +5587,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -5594,7 +5643,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -5639,7 +5688,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -5684,7 +5733,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -5729,7 +5778,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -5774,7 +5823,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -5820,7 +5869,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -5890,7 +5939,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -5952,7 +6001,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -6022,7 +6071,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -6084,7 +6133,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -6154,7 +6203,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -6216,7 +6265,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -6286,7 +6335,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -6348,7 +6397,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -6418,7 +6467,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -6480,7 +6529,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -6550,7 +6599,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -6612,7 +6661,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -6682,7 +6731,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -6744,7 +6793,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -6814,7 +6863,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -6876,7 +6925,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -6946,7 +6995,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -7008,7 +7057,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -7078,7 +7127,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -7140,7 +7189,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -7210,7 +7259,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -7272,7 +7321,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -7342,7 +7391,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -7404,7 +7453,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -7474,7 +7523,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -7536,7 +7585,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -7606,7 +7655,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -7668,7 +7717,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -7738,7 +7787,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -7800,7 +7849,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -7870,7 +7919,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -7932,7 +7981,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -8002,7 +8051,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -8064,7 +8113,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -8134,7 +8183,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -8196,7 +8245,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -8266,7 +8315,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -8328,7 +8377,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -8398,7 +8447,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -8459,7 +8508,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -8500,7 +8549,8 @@
         "TypeNamePlural": "TitleBarVisualizerRecords",
         "DisplayName": "TitleBarVisualizer",
         "DisplayNamePlural": "TitleBarVisualizer records",
-        "Description": "TitleBarVisualizer.HolonType"
+        "Description": "TitleBarVisualizer.HolonType",
+        "VisualizerKind": "TitleBar"
       },
       "relationships": [
         {
@@ -8515,7 +8565,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -8552,7 +8602,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -8597,7 +8647,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -8650,7 +8700,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -8703,7 +8753,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -8817,7 +8867,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -8863,7 +8913,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -8909,7 +8959,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -8954,7 +9004,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -9010,7 +9060,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -9067,7 +9117,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -9104,7 +9154,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -9207,7 +9257,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -9443,7 +9493,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -9489,7 +9539,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -9535,7 +9585,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -9581,7 +9631,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -9639,10 +9689,10 @@
       "key": "HolonInspector.TitleBarSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
-        "CompositionActivation": "presentation",
-        "CompositionKind": "titleBar",
+        "CompositionActivation": "Presentation",
         "CompositionRole": "titleBar",
-        "CompositionSubject": "subject",
+        "CompositionSubject": "OwnerSubject",
+        "VisualizerKind": "TitleBar",
         "VisualizerSlotDescription": "Selected TitleBarSlot with independent inspection and bounded presentation."
       },
       "relationships": [
@@ -9676,10 +9726,10 @@
       "key": "LoadHolonsResult.TitleBarSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {
-        "CompositionActivation": "presentation",
-        "CompositionKind": "titleBar",
+        "CompositionActivation": "Presentation",
         "CompositionRole": "titleBar",
-        "CompositionSubject": "subject",
+        "CompositionSubject": "OwnerSubject",
+        "VisualizerKind": "TitleBar",
         "VisualizerSlotDescription": "Selected TitleBarSlot with independent inspection and bounded presentation."
       },
       "relationships": [
@@ -9722,6 +9772,14 @@
           "target": [
             {
               "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ConsumesDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasHeadingFontFamily.DesignToken"
             }
           ]
         },
@@ -9924,7 +9982,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:4620177b4c08a8f02cefa3e3c40e58874f3d64829e9725712bcf0f20ac2db127",
+        "VisualizerArtifactDigest": "sha256:89c4804d4f3728a7b932ab18d3755b6403f0b0ad3940957e3ca8521e23300026",
         "VisualizerImplementationKey": "dahn.node-title-bar",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -10048,7 +10106,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -10094,7 +10152,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -10140,7 +10198,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -10186,7 +10244,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -10232,7 +10290,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -10278,7 +10336,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -10323,7 +10381,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -10383,7 +10441,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -10453,7 +10511,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -10541,6 +10599,14 @@
           ]
         },
         {
+          "name": "ConsumesDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasHeadingFontFamily.DesignToken"
+            }
+          ]
+        },
+        {
           "name": "ImplementedBy",
           "target": [
             {
@@ -10571,7 +10637,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:df1cc40e33345c759d2b723a27bfaf33dc33cad86b40d3053dc659131d9c693d",
+        "VisualizerArtifactDigest": "sha256:189c87f1e931de4b0518b8e449a7be476e55f92cd53c51c4378cf9a045193117",
         "VisualizerImplementationKey": "dahn.compact-title-bar",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -10610,7 +10676,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -10657,7 +10723,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -10743,7 +10809,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -10791,7 +10857,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -10845,7 +10911,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -10891,7 +10957,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -10961,7 +11027,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -11023,7 +11089,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -11093,7 +11159,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -11155,7 +11221,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -11225,7 +11291,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -11287,7 +11353,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -11357,7 +11423,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -11419,7 +11485,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -11489,7 +11555,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -11552,7 +11618,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -11622,7 +11688,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -11683,7 +11749,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -11713,7 +11779,7 @@
         "TypeNamePlural": "CompositionSubjectValues",
         "DisplayName": "CompositionSubject",
         "DisplayNamePlural": "CompositionSubject values",
-        "Description": "Subject binding: subject, owner, or scalarProperties."
+        "Description": "Guest-interpreted semantic subject binding independent of stored values and viewport geometry."
       },
       "relationships": [
         {
@@ -11728,7 +11794,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -11736,7 +11802,7 @@
           "name": "ValueType",
           "target": [
             {
-              "$ref": "MapStringValueType.StringValueType"
+              "$ref": "CompositionSubject.MapEnumValueType"
             }
           ]
         },
@@ -11751,13 +11817,13 @@
       ]
     },
     {
-      "key": "CompositionKind.PropertyType",
+      "key": "VisualizerKind.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "TypeName": "CompositionKind",
-        "TypeNamePlural": "CompositionKindValues",
-        "DisplayName": "CompositionKind",
-        "DisplayNamePlural": "CompositionKind values",
+        "TypeName": "VisualizerKind",
+        "TypeNamePlural": "VisualizerKindValues",
+        "DisplayName": "VisualizerKind",
+        "DisplayNamePlural": "VisualizerKind values",
         "Description": "Visualizer kind required for a demanded composition Slot."
       },
       "relationships": [
@@ -11773,7 +11839,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -11781,7 +11847,7 @@
           "name": "ValueType",
           "target": [
             {
-              "$ref": "MapStringValueType.StringValueType"
+              "$ref": "VisualizerKind.MapEnumValueType"
             }
           ]
         },
@@ -11818,7 +11884,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -11826,7 +11892,7 @@
           "name": "ValueType",
           "target": [
             {
-              "$ref": "MapStringValueType.StringValueType"
+              "$ref": "CompositionActivation.MapEnumValueType"
             }
           ]
         },
@@ -11863,7 +11929,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -11929,7 +11995,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -11974,7 +12040,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -11982,7 +12048,10 @@
           "name": "HasSlot",
           "target": [
             {
-              "$ref": "DefaultPropertyMapVisualizer.PropertySlot"
+              "$ref": "DefaultPropertyMapVisualizer.LabelSlot"
+            },
+            {
+              "$ref": "DefaultPropertyMapVisualizer.ValueSlot"
             }
           ]
         },
@@ -12019,7 +12088,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -12064,7 +12133,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -12112,7 +12181,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         },
@@ -12133,6 +12202,3699 @@
             },
             {
               "$ref": "LoadHolonsResult.CollectionsSlot"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerPreference.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "VisualizerPreference",
+        "TypeNamePlural": "VisualizerPreferences",
+        "DisplayName": "VisualizerPreference",
+        "DisplayNamePlural": "VisualizerPreferences",
+        "Description": "An accepted personal Visualizer choice with optional Slot scope and optional configuration."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "InstanceKeyRule",
+          "target": [
+            {
+              "$ref": "NoneRule.KeyRuleType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(VisualizerPreference.HolonType)-[PreferenceForAgent]->(PersonAgent.BioSocialAgent)"
+            },
+            {
+              "$ref": "(VisualizerPreference.HolonType)-[PreferenceForSubjectType]->(TypeDescriptor)"
+            },
+            {
+              "$ref": "(VisualizerPreference.HolonType)-[PreferenceForSlot]->(VisualizerSlot.HolonType)"
+            },
+            {
+              "$ref": "(VisualizerPreference.HolonType)-[PreferredVisualizer]->(Visualizer.HolonType)"
+            },
+            {
+              "$ref": "(VisualizerPreference.HolonType)-[PreferredUsage]->(VisualizerUsage.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerSlotDefault.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "VisualizerSlotDefault",
+        "TypeNamePlural": "VisualizerSlotDefaults",
+        "DisplayName": "VisualizerSlotDefault",
+        "DisplayNamePlural": "VisualizerSlotDefaults",
+        "Description": "A Slot steward recommendation, optionally conditioned on a subject descriptor."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "InstanceKeyRule",
+          "target": [
+            {
+              "$ref": "NoneRule.KeyRuleType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(VisualizerSlotDefault.HolonType)-[DefaultForSlot]->(VisualizerSlot.HolonType)"
+            },
+            {
+              "$ref": "(VisualizerSlotDefault.HolonType)-[RecommendsVisualizer]->(Visualizer.HolonType)"
+            },
+            {
+              "$ref": "(VisualizerSlotDefault.HolonType)-[DefaultForSubjectType]->(TypeDescriptor)"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerPreference.HolonType)-[PreferenceForAgent]->(PersonAgent.BioSocialAgent)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "PreferenceForAgent",
+        "TypeNamePlural": "PreferenceForAgentRelationships",
+        "DisplayName": "PreferenceForAgent",
+        "DisplayNamePlural": "PreferenceForAgent Relationships",
+        "Description": "PreferenceForAgent for the DAHN personal/composition contract.",
+        "DeletionSemantic": "Allow",
+        "TargetBinding": "Lineage"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerPreference.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "PersonAgent.BioSocialAgent"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(PersonAgent.BioSocialAgent)-[HasPersonalVisualizerPreference]->(VisualizerPreference.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(PersonAgent.BioSocialAgent)-[HasPersonalVisualizerPreference]->(VisualizerPreference.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "HasPersonalVisualizerPreference",
+        "TypeNamePlural": "HasPersonalVisualizerPreferenceRelationships",
+        "DisplayName": "HasPersonalVisualizerPreference",
+        "DisplayNamePlural": "HasPersonalVisualizerPreference Relationships",
+        "Description": "Derived inverse of PreferenceForAgent.",
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Lineage"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "PersonAgent.BioSocialAgent"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerPreference.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerPreference.HolonType)-[PreferenceForSubjectType]->(TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "PreferenceForSubjectType",
+        "TypeNamePlural": "PreferenceForSubjectTypeRelationships",
+        "DisplayName": "PreferenceForSubjectType",
+        "DisplayNamePlural": "PreferenceForSubjectType Relationships",
+        "Description": "PreferenceForSubjectType for the DAHN personal/composition contract.",
+        "DeletionSemantic": "Allow",
+        "TargetBinding": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerPreference.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(TypeDescriptor)-[HasSubjectVisualizerPreference]->(VisualizerPreference.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor)-[HasSubjectVisualizerPreference]->(VisualizerPreference.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "HasSubjectVisualizerPreference",
+        "TypeNamePlural": "HasSubjectVisualizerPreferenceRelationships",
+        "DisplayName": "HasSubjectVisualizerPreference",
+        "DisplayNamePlural": "HasSubjectVisualizerPreference Relationships",
+        "Description": "Derived inverse of PreferenceForSubjectType.",
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Lineage"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerPreference.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerPreference.HolonType)-[PreferenceForSlot]->(VisualizerSlot.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "PreferenceForSlot",
+        "TypeNamePlural": "PreferenceForSlotRelationships",
+        "DisplayName": "PreferenceForSlot",
+        "DisplayNamePlural": "PreferenceForSlot Relationships",
+        "Description": "PreferenceForSlot for the DAHN personal/composition contract.",
+        "DeletionSemantic": "Allow",
+        "TargetBinding": "Lineage"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerPreference.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerSlot.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(VisualizerSlot.HolonType)-[HasScopedVisualizerPreference]->(VisualizerPreference.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerSlot.HolonType)-[HasScopedVisualizerPreference]->(VisualizerPreference.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "HasScopedVisualizerPreference",
+        "TypeNamePlural": "HasScopedVisualizerPreferenceRelationships",
+        "DisplayName": "HasScopedVisualizerPreference",
+        "DisplayNamePlural": "HasScopedVisualizerPreference Relationships",
+        "Description": "Derived inverse of PreferenceForSlot.",
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Lineage"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerSlot.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerPreference.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerPreference.HolonType)-[PreferredVisualizer]->(Visualizer.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "PreferredVisualizer",
+        "TypeNamePlural": "PreferredVisualizerRelationships",
+        "DisplayName": "PreferredVisualizer",
+        "DisplayNamePlural": "PreferredVisualizer Relationships",
+        "Description": "PreferredVisualizer for the DAHN personal/composition contract.",
+        "DeletionSemantic": "Allow",
+        "TargetBinding": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerPreference.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Visualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(Visualizer.HolonType)-[ChosenByVisualizerPreference]->(VisualizerPreference.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Visualizer.HolonType)-[ChosenByVisualizerPreference]->(VisualizerPreference.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ChosenByVisualizerPreference",
+        "TypeNamePlural": "ChosenByVisualizerPreferenceRelationships",
+        "DisplayName": "ChosenByVisualizerPreference",
+        "DisplayNamePlural": "ChosenByVisualizerPreference Relationships",
+        "Description": "Derived inverse of PreferredVisualizer.",
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Lineage"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Visualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerPreference.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerPreference.HolonType)-[PreferredUsage]->(VisualizerUsage.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "PreferredUsage",
+        "TypeNamePlural": "PreferredUsageRelationships",
+        "DisplayName": "PreferredUsage",
+        "DisplayNamePlural": "PreferredUsage Relationships",
+        "Description": "PreferredUsage for the DAHN personal/composition contract.",
+        "DeletionSemantic": "Allow",
+        "TargetBinding": "Lineage"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerPreference.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerUsage.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(VisualizerUsage.HolonType)-[PreferredByVisualizerPreference]->(VisualizerPreference.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerUsage.HolonType)-[PreferredByVisualizerPreference]->(VisualizerPreference.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "PreferredByVisualizerPreference",
+        "TypeNamePlural": "PreferredByVisualizerPreferenceRelationships",
+        "DisplayName": "PreferredByVisualizerPreference",
+        "DisplayNamePlural": "PreferredByVisualizerPreference Relationships",
+        "Description": "Derived inverse of PreferredUsage.",
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Lineage"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerUsage.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerPreference.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerSlotDefault.HolonType)-[DefaultForSlot]->(VisualizerSlot.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "DefaultForSlot",
+        "TypeNamePlural": "DefaultForSlotRelationships",
+        "DisplayName": "DefaultForSlot",
+        "DisplayNamePlural": "DefaultForSlot Relationships",
+        "Description": "DefaultForSlot for the DAHN personal/composition contract.",
+        "DeletionSemantic": "Allow",
+        "TargetBinding": "Lineage"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerSlotDefault.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerSlot.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(VisualizerSlot.HolonType)-[HasDefaultDeclaration]->(VisualizerSlotDefault.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerSlot.HolonType)-[HasDefaultDeclaration]->(VisualizerSlotDefault.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "HasDefaultDeclaration",
+        "TypeNamePlural": "HasDefaultDeclarationRelationships",
+        "DisplayName": "HasDefaultDeclaration",
+        "DisplayNamePlural": "HasDefaultDeclaration Relationships",
+        "Description": "Derived inverse of DefaultForSlot.",
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Lineage"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerSlot.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerSlotDefault.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerSlotDefault.HolonType)-[RecommendsVisualizer]->(Visualizer.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "RecommendsVisualizer",
+        "TypeNamePlural": "RecommendsVisualizerRelationships",
+        "DisplayName": "RecommendsVisualizer",
+        "DisplayNamePlural": "RecommendsVisualizer Relationships",
+        "Description": "RecommendsVisualizer for the DAHN personal/composition contract.",
+        "DeletionSemantic": "Allow",
+        "TargetBinding": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerSlotDefault.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Visualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(Visualizer.HolonType)-[RecommendedBySlotDefault]->(VisualizerSlotDefault.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Visualizer.HolonType)-[RecommendedBySlotDefault]->(VisualizerSlotDefault.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "RecommendedBySlotDefault",
+        "TypeNamePlural": "RecommendedBySlotDefaultRelationships",
+        "DisplayName": "RecommendedBySlotDefault",
+        "DisplayNamePlural": "RecommendedBySlotDefault Relationships",
+        "Description": "Derived inverse of RecommendsVisualizer.",
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Lineage"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Visualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerSlotDefault.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerSlotDefault.HolonType)-[DefaultForSubjectType]->(TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "DefaultForSubjectType",
+        "TypeNamePlural": "DefaultForSubjectTypeRelationships",
+        "DisplayName": "DefaultForSubjectType",
+        "DisplayNamePlural": "DefaultForSubjectType Relationships",
+        "Description": "DefaultForSubjectType for the DAHN personal/composition contract.",
+        "DeletionSemantic": "Allow",
+        "TargetBinding": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerSlotDefault.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(TypeDescriptor)-[HasConditionalSlotDefault]->(VisualizerSlotDefault.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor)-[HasConditionalSlotDefault]->(VisualizerSlotDefault.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "HasConditionalSlotDefault",
+        "TypeNamePlural": "HasConditionalSlotDefaultRelationships",
+        "DisplayName": "HasConditionalSlotDefault",
+        "DisplayNamePlural": "HasConditionalSlotDefault Relationships",
+        "Description": "Derived inverse of DefaultForSubjectType.",
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Lineage"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerSlotDefault.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerUsage.HolonType)-[UsageForAgent]->(PersonAgent.BioSocialAgent)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "UsageForAgent",
+        "TypeNamePlural": "UsageForAgentRelationships",
+        "DisplayName": "UsageForAgent",
+        "DisplayNamePlural": "UsageForAgent Relationships",
+        "Description": "UsageForAgent for the DAHN personal/composition contract.",
+        "DeletionSemantic": "Allow",
+        "TargetBinding": "Lineage"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerUsage.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "PersonAgent.BioSocialAgent"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(PersonAgent.BioSocialAgent)-[HasPersonalVisualizerUsage]->(VisualizerUsage.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(PersonAgent.BioSocialAgent)-[HasPersonalVisualizerUsage]->(VisualizerUsage.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "HasPersonalVisualizerUsage",
+        "TypeNamePlural": "HasPersonalVisualizerUsageRelationships",
+        "DisplayName": "HasPersonalVisualizerUsage",
+        "DisplayNamePlural": "HasPersonalVisualizerUsage Relationships",
+        "Description": "Derived inverse of UsageForAgent.",
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Lineage"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "PersonAgent.BioSocialAgent"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerUsage.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CompositionActivation.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType",
+      "properties": {
+        "TypeName": "CompositionActivation",
+        "TypeNamePlural": "CompositionActivationValues",
+        "DisplayName": "CompositionActivation",
+        "DisplayNamePlural": "CompositionActivation values",
+        "Description": "Bounded CompositionActivation vocabulary interpreted by shared Rust."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumValueType.EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "CompositionActivation.MapEnumValueType.Presentation"
+            },
+            {
+              "$ref": "CompositionActivation.MapEnumValueType.Demand"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CompositionActivation.MapEnumValueType.Presentation",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Presentation",
+        "TypeNamePlural": "Presentation",
+        "DisplayName": "Presentation",
+        "DisplayNamePlural": "Presentation",
+        "Description": "Presentation semantic composition operation."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CompositionActivation.MapEnumValueType.Demand",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Demand",
+        "TypeNamePlural": "Demand",
+        "DisplayName": "Demand",
+        "DisplayNamePlural": "Demand",
+        "Description": "Demand semantic composition operation."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CompositionSubject.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType",
+      "properties": {
+        "TypeName": "CompositionSubject",
+        "TypeNamePlural": "CompositionSubjectValues",
+        "DisplayName": "CompositionSubject",
+        "DisplayNamePlural": "CompositionSubject values",
+        "Description": "Bounded CompositionSubject vocabulary interpreted by shared Rust."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumValueType.EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "CompositionSubject.MapEnumValueType.OwnerSubject"
+            },
+            {
+              "$ref": "CompositionSubject.MapEnumValueType.ScalarPropertyLabel"
+            },
+            {
+              "$ref": "CompositionSubject.MapEnumValueType.ScalarPropertyValue"
+            },
+            {
+              "$ref": "CompositionSubject.MapEnumValueType.AffordedAction"
+            },
+            {
+              "$ref": "CompositionSubject.MapEnumValueType.SelectedCollection"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CompositionSubject.MapEnumValueType.OwnerSubject",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "OwnerSubject",
+        "TypeNamePlural": "OwnerSubject",
+        "DisplayName": "OwnerSubject",
+        "DisplayNamePlural": "OwnerSubject",
+        "Description": "OwnerSubject semantic composition operation."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CompositionSubject.MapEnumValueType.ScalarPropertyLabel",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "ScalarPropertyLabel",
+        "TypeNamePlural": "ScalarPropertyLabel",
+        "DisplayName": "ScalarPropertyLabel",
+        "DisplayNamePlural": "ScalarPropertyLabel",
+        "Description": "ScalarPropertyLabel semantic composition operation."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CompositionSubject.MapEnumValueType.ScalarPropertyValue",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "ScalarPropertyValue",
+        "TypeNamePlural": "ScalarPropertyValue",
+        "DisplayName": "ScalarPropertyValue",
+        "DisplayNamePlural": "ScalarPropertyValue",
+        "Description": "ScalarPropertyValue semantic composition operation."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CompositionSubject.MapEnumValueType.AffordedAction",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "AffordedAction",
+        "TypeNamePlural": "AffordedAction",
+        "DisplayName": "AffordedAction",
+        "DisplayNamePlural": "AffordedAction",
+        "Description": "AffordedAction semantic composition operation."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CompositionSubject.MapEnumValueType.SelectedCollection",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "SelectedCollection",
+        "TypeNamePlural": "SelectedCollection",
+        "DisplayName": "SelectedCollection",
+        "DisplayNamePlural": "SelectedCollection",
+        "Description": "SelectedCollection semantic composition operation."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType",
+      "properties": {
+        "TypeName": "VisualizerKind",
+        "TypeNamePlural": "VisualizerKindValues",
+        "DisplayName": "VisualizerKind",
+        "DisplayNamePlural": "VisualizerKind values",
+        "Description": "Bounded VisualizerKind vocabulary interpreted by shared Rust."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumValueType.EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "VisualizerKind.MapEnumValueType.Canvas"
+            },
+            {
+              "$ref": "VisualizerKind.MapEnumValueType.TitleBar"
+            },
+            {
+              "$ref": "VisualizerKind.MapEnumValueType.Node"
+            },
+            {
+              "$ref": "VisualizerKind.MapEnumValueType.Structure"
+            },
+            {
+              "$ref": "VisualizerKind.MapEnumValueType.RootedNavigation"
+            },
+            {
+              "$ref": "VisualizerKind.MapEnumValueType.Collection"
+            },
+            {
+              "$ref": "VisualizerKind.MapEnumValueType.PropertyMap"
+            },
+            {
+              "$ref": "VisualizerKind.MapEnumValueType.Value"
+            },
+            {
+              "$ref": "VisualizerKind.MapEnumValueType.ActionBar"
+            },
+            {
+              "$ref": "VisualizerKind.MapEnumValueType.Action"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.Canvas",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Canvas",
+        "TypeNamePlural": "Canvas",
+        "DisplayName": "Canvas",
+        "DisplayNamePlural": "Canvas",
+        "Description": "Canvas semantic composition operation."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.TitleBar",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "TitleBar",
+        "TypeNamePlural": "TitleBar",
+        "DisplayName": "TitleBar",
+        "DisplayNamePlural": "TitleBar",
+        "Description": "TitleBar semantic composition operation."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.Node",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Node",
+        "TypeNamePlural": "Node",
+        "DisplayName": "Node",
+        "DisplayNamePlural": "Node",
+        "Description": "Node semantic composition operation."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.Structure",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Structure",
+        "TypeNamePlural": "Structure",
+        "DisplayName": "Structure",
+        "DisplayNamePlural": "Structure",
+        "Description": "Structure semantic composition operation."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.RootedNavigation",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "RootedNavigation",
+        "TypeNamePlural": "RootedNavigation",
+        "DisplayName": "RootedNavigation",
+        "DisplayNamePlural": "RootedNavigation",
+        "Description": "RootedNavigation semantic composition operation."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.Collection",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Collection",
+        "TypeNamePlural": "Collection",
+        "DisplayName": "Collection",
+        "DisplayNamePlural": "Collection",
+        "Description": "Collection semantic composition operation."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.PropertyMap",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "PropertyMap",
+        "TypeNamePlural": "PropertyMap",
+        "DisplayName": "PropertyMap",
+        "DisplayNamePlural": "PropertyMap",
+        "Description": "PropertyMap semantic composition operation."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.Value",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Value",
+        "TypeNamePlural": "Value",
+        "DisplayName": "Value",
+        "DisplayNamePlural": "Value",
+        "Description": "Value semantic composition operation."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.ActionBar",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "ActionBar",
+        "TypeNamePlural": "ActionBar",
+        "DisplayName": "ActionBar",
+        "DisplayNamePlural": "ActionBar",
+        "Description": "ActionBar semantic composition operation."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.Action",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Action",
+        "TypeNamePlural": "Action",
+        "DisplayName": "Action",
+        "DisplayNamePlural": "Action",
+        "Description": "Action semantic composition operation."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ResolveCompositionRequest.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ResolveCompositionRequest",
+        "TypeNamePlural": "ResolveCompositionRequestEntries",
+        "DisplayName": "ResolveCompositionRequest",
+        "DisplayNamePlural": "ResolveCompositionRequest entries",
+        "Description": "Transient owner-directed composition contract."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(ResolveCompositionRequest.HolonType)-[CompositionSubject]->(HolonType.TypeDescriptor)"
+            },
+            {
+              "$ref": "(ResolveCompositionRequest.HolonType)-[CompositionTheme]->(Theme.HolonType)"
+            },
+            {
+              "$ref": "(ResolveCompositionRequest.HolonType)-[RequestedCompositionSlot]->(VisualizerSlot.HolonType)"
+            },
+            {
+              "$ref": "(ResolveCompositionRequest.HolonType)-[SelectedCollectionSource]->(RelationshipType.TypeDescriptor)"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ResolvedComposition.Projection",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ResolvedComposition",
+        "TypeNamePlural": "ResolvedCompositionEntries",
+        "DisplayName": "ResolvedComposition",
+        "DisplayNamePlural": "ResolvedComposition entries",
+        "Description": "Transient owner-directed composition contract."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Projection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "CompositionData.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(ResolvedComposition.Projection)-[CompositionReferences]->(HolonType.TypeDescriptor)"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ResolveCompositionRequest.HolonType)-[CompositionSubject]->(HolonType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "CompositionSubject",
+        "TypeNamePlural": "CompositionSubjectEntries",
+        "DisplayName": "CompositionSubject",
+        "DisplayNamePlural": "CompositionSubject entries",
+        "Description": "Composition projection or request relationship.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ResolveCompositionRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonType.TypeDescriptor)-[CompositionSubjectOf]->(ResolveCompositionRequest.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[CompositionSubjectOf]->(ResolveCompositionRequest.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "CompositionSubjectOf",
+        "TypeNamePlural": "CompositionSubjectOfEntries",
+        "DisplayName": "CompositionSubjectOf",
+        "DisplayNamePlural": "CompositionSubjectOf entries",
+        "Description": "Derived inverse of the composition relationship.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ResolveCompositionRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ResolveCompositionRequest.HolonType)-[CompositionTheme]->(Theme.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "CompositionTheme",
+        "TypeNamePlural": "CompositionThemeEntries",
+        "DisplayName": "CompositionTheme",
+        "DisplayNamePlural": "CompositionTheme entries",
+        "Description": "Composition projection or request relationship.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ResolveCompositionRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Theme.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(Theme.HolonType)-[CompositionThemeOf]->(ResolveCompositionRequest.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Theme.HolonType)-[CompositionThemeOf]->(ResolveCompositionRequest.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "CompositionThemeOf",
+        "TypeNamePlural": "CompositionThemeOfEntries",
+        "DisplayName": "CompositionThemeOf",
+        "DisplayNamePlural": "CompositionThemeOf entries",
+        "Description": "Derived inverse of the composition relationship.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Theme.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ResolveCompositionRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ResolveCompositionRequest.HolonType)-[RequestedCompositionSlot]->(VisualizerSlot.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "RequestedCompositionSlot",
+        "TypeNamePlural": "RequestedCompositionSlotEntries",
+        "DisplayName": "RequestedCompositionSlot",
+        "DisplayNamePlural": "RequestedCompositionSlot entries",
+        "Description": "Composition projection or request relationship.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ResolveCompositionRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerSlot.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(VisualizerSlot.HolonType)-[RequestedCompositionSlotOf]->(ResolveCompositionRequest.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerSlot.HolonType)-[RequestedCompositionSlotOf]->(ResolveCompositionRequest.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "RequestedCompositionSlotOf",
+        "TypeNamePlural": "RequestedCompositionSlotOfEntries",
+        "DisplayName": "RequestedCompositionSlotOf",
+        "DisplayNamePlural": "RequestedCompositionSlotOf entries",
+        "Description": "Derived inverse of the composition relationship.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerSlot.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ResolveCompositionRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ResolveCompositionRequest.HolonType)-[SelectedCollectionSource]->(RelationshipType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "SelectedCollectionSource",
+        "TypeNamePlural": "SelectedCollectionSourceEntries",
+        "DisplayName": "SelectedCollectionSource",
+        "DisplayNamePlural": "SelectedCollectionSource entries",
+        "Description": "Composition projection or request relationship.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ResolveCompositionRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "RelationshipType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(RelationshipType.TypeDescriptor)-[SelectedCollectionSourceOf]->(ResolveCompositionRequest.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(RelationshipType.TypeDescriptor)-[SelectedCollectionSourceOf]->(ResolveCompositionRequest.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "SelectedCollectionSourceOf",
+        "TypeNamePlural": "SelectedCollectionSourceOfEntries",
+        "DisplayName": "SelectedCollectionSourceOf",
+        "DisplayNamePlural": "SelectedCollectionSourceOf entries",
+        "Description": "Derived inverse of the composition relationship.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "RelationshipType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ResolveCompositionRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ResolvedComposition.Projection)-[CompositionReferences]->(HolonType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "CompositionReferences",
+        "TypeNamePlural": "CompositionReferencesEntries",
+        "DisplayName": "CompositionReferences",
+        "DisplayNamePlural": "CompositionReferences entries",
+        "Description": "Composition projection or request relationship.",
+        "IsOrdered": true,
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ResolvedComposition.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonType.TypeDescriptor)-[CompositionReferencesOf]->(ResolvedComposition.Projection)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[CompositionReferencesOf]->(ResolvedComposition.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "CompositionReferencesOf",
+        "TypeNamePlural": "CompositionReferencesOfEntries",
+        "DisplayName": "CompositionReferencesOf",
+        "DisplayNamePlural": "CompositionReferencesOf entries",
+        "Description": "Derived inverse of the composition relationship.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ResolvedComposition.Projection"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerSlot.HolonType)-[InitialCollectionSource]->(RelationshipType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "InitialCollectionSource",
+        "TypeNamePlural": "InitialCollectionSourceEntries",
+        "DisplayName": "InitialCollectionSource",
+        "DisplayNamePlural": "InitialCollectionSource entries",
+        "Description": "Composition projection or request relationship.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerSlot.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "RelationshipType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(RelationshipType.TypeDescriptor)-[InitialCollectionSourceOf]->(VisualizerSlot.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(RelationshipType.TypeDescriptor)-[InitialCollectionSourceOf]->(VisualizerSlot.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "InitialCollectionSourceOf",
+        "TypeNamePlural": "InitialCollectionSourceOfEntries",
+        "DisplayName": "InitialCollectionSourceOf",
+        "DisplayNamePlural": "InitialCollectionSourceOf entries",
+        "Description": "Derived inverse of the composition relationship.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "RelationshipType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerSlot.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CompositionData.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "CompositionData",
+        "TypeNamePlural": "CompositionDataEntries",
+        "DisplayName": "CompositionData",
+        "DisplayNamePlural": "CompositionData entries",
+        "Description": "Consolidated scalar metadata and indexes into the separate exact reference table.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ResolveComposition.DanceType",
+      "type": "MetaDanceType.MetaHolonType",
+      "properties": {
+        "TypeName": "ResolveComposition",
+        "TypeNamePlural": "ResolveCompositionEntries",
+        "DisplayName": "ResolveComposition",
+        "DisplayNamePlural": "ResolveComposition entries",
+        "Description": "Authoritative owner-directed composition, without subject population reads or executable acquisition.",
+        "DanceDescription": "Resolve the selected owner's requested child bindings from semantic Slot declarations.",
+        "RequiredExecutionContext": "SpaceAuthoritative"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DanceType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "DanceAffordedBy",
+          "target": [
+            {
+              "$ref": "Visualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "RequestType",
+          "target": [
+            {
+              "$ref": "ResolveCompositionRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Response",
+          "target": [
+            {
+              "$ref": "ResolveCompositionResponse.DanceResponseType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "GuestResolveComposition.DanceImplementation",
+      "type": "DanceImplementation.HolonType",
+      "properties": {
+        "ImplementationName": "GuestResolveComposition"
+      },
+      "relationships": [
+        {
+          "name": "ForDance",
+          "target": [
+            {
+              "$ref": "ResolveComposition.DanceType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ResolveCompositionResponse.DanceResponseType",
+      "type": "MetaDanceResponseType.MetaHolonType",
+      "properties": {
+        "TypeName": "ResolveCompositionResponse",
+        "TypeNamePlural": "ResolveCompositionResponseEntries",
+        "DisplayName": "ResolveCompositionResponse",
+        "DisplayNamePlural": "ResolveCompositionResponse entries",
+        "Description": "Consolidated child bindings and metadata."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DanceResponseType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.4"
+            }
+          ]
+        },
+        {
+          "name": "ResponseBody",
+          "target": [
+            {
+              "$ref": "ResolvedComposition.Projection"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DefaultPropertyMapVisualizer.LabelSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {
+        "CompositionActivation": "Presentation",
+        "CompositionRole": "label",
+        "CompositionSubject": "ScalarPropertyLabel",
+        "VisualizerKind": "Value",
+        "VisualizerSlotDescription": "Present each scalar property label directly."
+      },
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "ValueVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DefaultPropertyMapVisualizer.ValueSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {
+        "CompositionActivation": "Presentation",
+        "CompositionRole": "value",
+        "CompositionSubject": "ScalarPropertyValue",
+        "VisualizerKind": "Value",
+        "VisualizerSlotDescription": "Present each scalar property value directly."
+      },
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "ValueVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "HolonInspectorTitleBarSlotDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "DefaultForSlot",
+          "target": [
+            {
+              "$ref": "HolonInspector.TitleBarSlot"
+            }
+          ]
+        },
+        {
+          "name": "RecommendsVisualizer",
+          "target": [
+            {
+              "$ref": "NodeTitleBar.TitleBarVisualizer"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LoadHolonsResultTitleBarSlotDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "DefaultForSlot",
+          "target": [
+            {
+              "$ref": "LoadHolonsResult.TitleBarSlot"
+            }
+          ]
+        },
+        {
+          "name": "RecommendsVisualizer",
+          "target": [
+            {
+              "$ref": "NodeTitleBar.TitleBarVisualizer"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PropertyLabelDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "DefaultForSlot",
+          "target": [
+            {
+              "$ref": "DefaultPropertyMapVisualizer.LabelSlot"
+            }
+          ]
+        },
+        {
+          "name": "RecommendsVisualizer",
+          "target": [
+            {
+              "$ref": "StringValue.ValueVisualizer"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "StringPropertyValueDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "DefaultForSlot",
+          "target": [
+            {
+              "$ref": "DefaultPropertyMapVisualizer.ValueSlot"
+            }
+          ]
+        },
+        {
+          "name": "DefaultForSubjectType",
+          "target": [
+            {
+              "$ref": "StringValueType.ValueType"
+            }
+          ]
+        },
+        {
+          "name": "RecommendsVisualizer",
+          "target": [
+            {
+              "$ref": "StringValue.ValueVisualizer"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "IntegerPropertyValueDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "DefaultForSlot",
+          "target": [
+            {
+              "$ref": "DefaultPropertyMapVisualizer.ValueSlot"
+            }
+          ]
+        },
+        {
+          "name": "DefaultForSubjectType",
+          "target": [
+            {
+              "$ref": "IntegerValueType.ValueType"
+            }
+          ]
+        },
+        {
+          "name": "RecommendsVisualizer",
+          "target": [
+            {
+              "$ref": "IntegerValue.ValueVisualizer"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BooleanPropertyValueDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "DefaultForSlot",
+          "target": [
+            {
+              "$ref": "DefaultPropertyMapVisualizer.ValueSlot"
+            }
+          ]
+        },
+        {
+          "name": "DefaultForSubjectType",
+          "target": [
+            {
+              "$ref": "BooleanValueType.ValueType"
+            }
+          ]
+        },
+        {
+          "name": "RecommendsVisualizer",
+          "target": [
+            {
+              "$ref": "BooleanValue.ValueVisualizer"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BytesPropertyValueDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "DefaultForSlot",
+          "target": [
+            {
+              "$ref": "DefaultPropertyMapVisualizer.ValueSlot"
+            }
+          ]
+        },
+        {
+          "name": "DefaultForSubjectType",
+          "target": [
+            {
+              "$ref": "BytesValueType.ValueType"
+            }
+          ]
+        },
+        {
+          "name": "RecommendsVisualizer",
+          "target": [
+            {
+              "$ref": "BytesValue.ValueVisualizer"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "EnumPropertyValueDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "DefaultForSlot",
+          "target": [
+            {
+              "$ref": "DefaultPropertyMapVisualizer.ValueSlot"
+            }
+          ]
+        },
+        {
+          "name": "DefaultForSubjectType",
+          "target": [
+            {
+              "$ref": "EnumValueType.ValueType"
+            }
+          ]
+        },
+        {
+          "name": "RecommendsVisualizer",
+          "target": [
+            {
+              "$ref": "EnumValue.ValueVisualizer"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MapEnumPropertyValueDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "DefaultForSlot",
+          "target": [
+            {
+              "$ref": "DefaultPropertyMapVisualizer.ValueSlot"
+            }
+          ]
+        },
+        {
+          "name": "DefaultForSubjectType",
+          "target": [
+            {
+              "$ref": "MapEnumValueType.EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "RecommendsVisualizer",
+          "target": [
+            {
+              "$ref": "EnumValue.ValueVisualizer"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "HolonInspectorPropertyMapSlotDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "DefaultForSlot",
+          "target": [
+            {
+              "$ref": "HolonInspector.PropertyMapSlot"
+            }
+          ]
+        },
+        {
+          "name": "RecommendsVisualizer",
+          "target": [
+            {
+              "$ref": "DefaultPropertyMapVisualizer.PropertyMapVisualizer"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "HolonInspectorActionsSlotDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "DefaultForSlot",
+          "target": [
+            {
+              "$ref": "HolonInspector.ActionsSlot"
+            }
+          ]
+        },
+        {
+          "name": "RecommendsVisualizer",
+          "target": [
+            {
+              "$ref": "GenericActions.ActionBarVisualizer"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "HolonInspectorControlsSlotDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "DefaultForSlot",
+          "target": [
+            {
+              "$ref": "HolonInspector.VisualizerControlsSlot"
+            }
+          ]
+        },
+        {
+          "name": "RecommendsVisualizer",
+          "target": [
+            {
+              "$ref": "GenericActions.ActionBarVisualizer"
             }
           ]
         },

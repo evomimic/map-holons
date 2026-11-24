@@ -1,17 +1,18 @@
 import { bindVisualizerInformationControl } from './visualizer-information-control';
-import type { DescribedHolonCollection, HolonReference, MapTransaction, PropertyDescriptorHandle } from '../deps';
+import type { DescribedHolonCollection, HolonReference, MapTransaction, PropertyDescriptorHandle, RelationshipDescriptorHandle, CompositionBinding } from '../deps';
 import type { TablePresentation } from '../contracts/table-presentation';
+import { prepareCompositionSubject } from './composition-subject';
 import type { CollectionInteractionElement, VisualizerContext } from '../contracts/visualizers';
 import { configureColumnValueVisualizers } from './column-value-visualizers';
 import { defineCustomElementOnce } from '../visualizers/define-custom-element-once';
 import type { MaterializedVisualizerRuntime } from './materialized-visualizer-runtime';
 
-const selectionBindings = new WeakMap<HTMLElement, { transaction: MapTransaction; subject: HolonReference | DescribedHolonCollection; parent: HolonReference; slot: HolonReference; selected: HolonReference }>();
+const selectionBindings = new WeakMap<HTMLElement, { transaction: MapTransaction; subject: HolonReference | DescribedHolonCollection; parent: HolonReference; slot: HolonReference; selected: HolonReference; displayName?: string }>();
 
 /** Bind after collection presentation, which may replace the element's children. */
 export async function bindCollectionVisualizerInformation(element: CollectionElement): Promise<void> {
   const binding = selectionBindings.get(element);
-  if (binding) await bindVisualizerInformationControl(element, binding.transaction, binding.subject, binding.parent, binding.slot, binding.selected);
+  if (binding) await bindVisualizerInformationControl(element, binding.transaction, binding.subject, binding.parent, binding.slot, binding.selected, 'end', undefined, binding.displayName);
 }
 
 export type CollectionElement = CollectionInteractionElement & {
@@ -27,17 +28,35 @@ export async function realizeCollection(
   parent: HolonReference, slot: HolonReference, materialized: MaterializedVisualizerRuntime,
   current: () => boolean, stage: (name: string) => void, presentation: MapTransaction = transaction,
   context?: Partial<Pick<VisualizerContext, 'theme' | 'canvas'>>,
+  demand?: { subject: HolonReference; source: RelationshipDescriptorHandle },
+  preparedBinding?: CompositionBinding,
 ): Promise<CollectionElement | undefined> {
   stage('Visualizer selection');
   // Selection needs the saved element type, not the loader-bound member handles.
-  const selection = presentation === transaction
+  let prepared = preparedBinding;
+  if (demand) {
+    if (!context?.theme) throw new Error('Collection demand requires the active semantic Theme.');
+    const subject = await prepareCompositionSubject(transaction, presentation, demand.subject);
+    const composition = await presentation.resolveRelationshipComposition(
+      parent, subject, context.theme.reference, slot, demand.source);
+    const roots = composition.bindings.filter(binding => binding.parent === null);
+    if (roots.length !== 1 || roots[0].subjectBinding !== 'SelectedCollection') {
+      throw new Error('Collection demand must resolve exactly one collection binding.');
+    }
+    prepared = roots[0];
+    materialized = materialized.forComposition(composition);
+  }
+  const selection = prepared ?? (presentation === transaction
     ? await transaction.selectCollectionVisualizer(collection, parent, slot)
     : await presentation.selectProjectedCollectionVisualizer(collection.elementType,
-      presentation.bindSavedReference(parent), presentation.bindSavedReference(slot));
+      presentation.bindSavedReference(parent), presentation.bindSavedReference(slot)));
   if (!current()) return;
   const element = await realizeSelectedCollection(selection.selected, materialized, current, stage);
   if (element) {
-    selectionBindings.set(element, { transaction: presentation, subject: collection, parent, slot, selected: selection.selected });
+    if (prepared) materialized.admitBinding(element, prepared);
+    const displayName = materialized.metadata(selection.selected)?.properties['DisplayName'];
+    selectionBindings.set(element, { transaction: presentation, subject: collection, parent, slot, selected: selection.selected,
+      displayName: displayName && 'StringValue' in displayName ? displayName.StringValue : undefined });
     configureColumnValueVisualizers(element, presentation, collection, selection.selected, materialized, current, context);
   }
   return element;

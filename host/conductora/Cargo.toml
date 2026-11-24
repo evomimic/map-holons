@@ -48,6 +48,7 @@ map_commands_contract = { workspace = true }
 map_commands_wire = { workspace = true }
 map_commands_runtime = { workspace = true }
 dahn_selection = { workspace = true }
+welcome = { workspace = true }
 core_types = { path = "../../shared_crates/type_system/core_types" }
 
 #holochain dependencies
@@ -58,12 +59,10 @@ tokio = { version = "1.5", features = ["rt", "rt-multi-thread"] }
 [dev-dependencies] # for unit tests
 type_names = { workspace = true }
 base_types = { workspace = true }
-#tauri = { version = "2", features = ["test"] } #"devtools"
-#tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 [features]
-custom-protocol = ["tauri/custom-protocol"]
+custom-protocol = ["tauri/custom-protocol", "welcome/custom-protocol"]
 # Explicit signed custody build.
-protected-custody = []
+protected-custody = ["welcome/protected-custody"]
 # Packaged debug workflow; not a production security-assurance claim.
-local-constitution = []
+local-constitution = ["welcome/local-constitution"]

@@ -8,6 +8,7 @@
     "core:default",
     "core:window:allow-set-title",
     "core:window:allow-set-size",
+    "core:window:allow-set-position",
     "allow-application-session",
     "allow-dispatch-map-command",
     "allow-select-loader-sources",

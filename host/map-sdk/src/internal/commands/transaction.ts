@@ -1,7 +1,7 @@
 import type { RequestOptionsOverrides } from '../request-context';
 import { buildRequest } from '../request-context';
 import {
-  expectLoadedTheme, expectCollection, expectDanceResponse, expectNone, expectRedoComplete,
+  expectResolvedComposition, expectLoadedTheme, expectCollection, expectDanceResponse, expectNone, expectRedoComplete,
   expectRedoToMarkerComplete, expectReference, expectReferences, expectUndoComplete,
   expectUndoToMarkerComplete, expectValue, expectVisualizerSelection, expectVisualizerDiscovery, expectVisualizerUsageSelection,
 } from '../result-decoders';
@@ -536,4 +536,14 @@ export function invalidateVisualizerBindings(txId: TxId): Promise<void> {
 
 export function specializeVisualizerUsage(txId: TxId, request: VisualizerSelectionRequestWire, selected: HolonReferenceWire, usage: HolonReferenceWire) {
   return runTransactionCommand(txId, { SpecializeVisualizerUsage: { request, selected, usage } }, expectVisualizerUsageSelection);
+}
+
+export function resolveComposition(txId: TxId, request: Extract<TransactionActionWire, { ResolveComposition: unknown }>['ResolveComposition']) {
+  return runTransactionCommand(txId, { ResolveComposition: request }, expectResolvedComposition);
+}
+export function rememberVisualizerPreference(txId: TxId, request: Extract<TransactionActionWire, { RememberVisualizerPreference: unknown }>['RememberVisualizerPreference']) {
+  return runTransactionCommand(txId, { RememberVisualizerPreference: request }, expectReference);
+}
+export function convertVisualizerSlotPreference(txId: TxId, preference: HolonReferenceWire) {
+  return runTransactionCommand(txId, { ConvertVisualizerSlotPreference: { preference } }, expectReference);
 }

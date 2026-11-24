@@ -65,3 +65,5 @@ export type { ParserDiagnostic } from './parser-diagnostics';
 
 export { CommittedHolonsReview } from './committed-review';
 export type { CommittedHolonEntry } from './committed-review';
+
+export type { CompositionBinding, CompositionMetadata, ResolvedComposition } from './composition';
