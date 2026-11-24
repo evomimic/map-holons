@@ -6,6 +6,8 @@ pub mod holon_reference;
 pub mod holon_service_api;
 mod holon_staging_behavior;
 mod lineage_identity;
+#[cfg(test)]
+mod project_property_values_tests;
 mod readable_holon;
 pub(crate) mod readable_impl;
 mod reference_compatibility;

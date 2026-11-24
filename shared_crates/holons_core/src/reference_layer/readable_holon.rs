@@ -12,7 +12,7 @@ use crate::{
     RelationshipMap,
 };
 use base_types::MapString;
-use core_types::{HolonError, HolonId, HolonNodeModel, PropertyName, PropertyValue};
+use core_types::{HolonError, HolonId, HolonNodeModel, PropertyMap, PropertyName, PropertyValue};
 use type_names::relationship_names::{CoreRelationshipTypeName, ToRelationshipName};
 use type_names::ToPropertyName;
 
@@ -132,6 +132,81 @@ pub trait ReadableHolon: ReadableHolonImpl {
     ) -> Result<Option<PropertyValue>, HolonError> {
         let prop = name.to_property_name();
         ReadableHolonImpl::property_value_impl(self, &prop)
+    }
+
+    /// Materializes the selected properties that are present on this holon.
+    ///
+    /// Each name is converted and read exactly as [`property_value`](Self::property_value)
+    /// would read it, including access checks and a saved reference's cached values. Use it
+    /// where values are finally needed, such as a query's final projection or a DAHN form.
+    /// It is not a query-evaluation primitive: evaluation keeps [`HolonReference`]s and reads
+    /// properties on demand instead of copying property maps between steps.
+    /// Projection outputs likewise remain holons accessed through [`HolonReference`]; this
+    /// returns only the values used to populate one.
+    ///
+    /// # Ergonomics
+    /// Accepts any iterable whose items implement [`ToPropertyName`], with the same name forms
+    /// and conversions as [`property_value`](Self::property_value). `&str` is canonicalized,
+    /// while `String`, `MapString` and `PropertyName` pass through unchanged. Owned arrays and
+    /// vectors work, as do borrowed collections of items whose borrowed form implements
+    /// [`ToPropertyName`], such as `&[PropertyName]`. For `&[&str]` pass
+    /// `names.iter().copied()`, and for `&[String]` pass `names.iter().cloned()`.
+    ///
+    /// # Returns
+    /// An owned [`PropertyMap`] keyed by converted name:
+    ///
+    /// - Absent properties are omitted. Descriptor defaults are not applied and requiredness
+    ///   is not checked; validating the output belongs to the consumer.
+    /// - Names that convert to the same property yield one entry.
+    /// - Entries follow [`PropertyMap`] order, not selection order.
+    /// - An empty selection returns an empty map without reading the holon.
+    ///
+    /// Names are read one at a time, so the result is not an atomic snapshot.
+    ///
+    /// # Errors
+    /// The first failed read fails the whole call; a partial map is never returned.
+    ///
+    /// # Examples
+    /// Materializing a query's final projection:
+    ///
+    /// ```
+    /// use core_types::PropertyMap;
+    /// use holons_core::{HolonError, HolonReference, ReadableHolon};
+    ///
+    /// fn project_person(person: &HolonReference) -> Result<PropertyMap, HolonError> {
+    ///     person.project_property_values(["FirstName", "LastName"])
+    /// }
+    /// ```
+    ///
+    /// Populating a DAHN form with the authored values of every described property:
+    ///
+    /// ```
+    /// use core_types::PropertyMap;
+    /// use holons_core::{HolonError, HolonReference, ReadableHolon};
+    ///
+    /// fn form_values(subject: &HolonReference) -> Result<PropertyMap, HolonError> {
+    ///     let names = subject
+    ///         .effective_descriptor()?
+    ///         .instance_properties()?
+    ///         .iter()
+    ///         .map(|property| property.property_name())
+    ///         .collect::<Result<Vec<_>, _>>()?;
+    ///     subject.project_property_values(&names)
+    /// }
+    /// ```
+    fn project_property_values<I>(&self, names: I) -> Result<PropertyMap, HolonError>
+    where
+        I: IntoIterator,
+        I::Item: ToPropertyName,
+    {
+        let mut values = PropertyMap::new();
+        for name in names {
+            let name = name.to_property_name();
+            if let Some(value) = ReadableHolonImpl::property_value_impl(self, &name)? {
+                values.insert(name, value);
+            }
+        }
+        Ok(values)
     }
 
     /// Retrieves the collection of holons related to this holon via the specified relationship.
