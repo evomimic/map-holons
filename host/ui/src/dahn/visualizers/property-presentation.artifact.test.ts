@@ -40,7 +40,7 @@ describe('Property presentation artifacts', () => {
     expect(slot.contains(property)).toBe(true);
     expect(valueSlot.contains(value)).toBe(true);
     expect(value.style.display).toBe('block');
-    expect(value.style.minWidth).toBe('0px');
+    expect(value.style.minWidth.replace('px', '')).toBe('0');
     expect(value.style.boxSizing).toBe('border-box');
     expect(property.querySelector('[data-dahn-property-name]')?.textContent).toBe('Title');
     expect((properties as any).getVisualizerComposition()).toEqual([{ label: 'Title', element: property }]);

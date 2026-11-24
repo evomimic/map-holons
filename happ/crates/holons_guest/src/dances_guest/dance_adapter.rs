@@ -22,7 +22,8 @@ use holons_core::{
 /// This function is responsible for ingress binding, runtime dispatch, and egress projection.
 #[hdk_extern]
 pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceResponseEnvelope> {
-    let DanceRequestEnvelope { request, session, descriptor_registry } = envelope;
+    let DanceRequestEnvelope { request, session, descriptor_registry, visualizer_evaluations } =
+        envelope;
     if descriptor_registry.is_some()
         && !matches!(&request, DanceEnvelopeRequest::Legacy(request) if request.dance_name.0 == "commit")
     {
@@ -33,10 +34,18 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
     }
     let request = match request {
         DanceEnvelopeRequest::Invocation { invocation } => {
-            return Ok(execute_invocation_envelope(invocation, session))
+            return Ok(execute_invocation_envelope(invocation, session, visualizer_evaluations))
         }
         DanceEnvelopeRequest::Legacy(request) => request,
     };
+    if visualizer_evaluations.is_some() {
+        return Ok(create_error_response_envelope(
+            HolonError::InvalidParameter(
+                "Evaluation carrier requires canonical composition".into(),
+            ),
+            session,
+        ));
+    }
     let dance_name = request.dance_name.clone();
     let is_load_holons = dance_name.0 == "load_holons";
     let total_started_at = performance_timestamp_micros();
@@ -53,6 +62,7 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
         };
 
         return Ok(DanceResponseEnvelope {
+            visualizer_evaluations: None,
             descriptor_registry: None,
             response: DanceEnvelopeResponse::Legacy(response_wire),
             session,
@@ -159,6 +169,7 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
     }
 
     Ok(DanceResponseEnvelope {
+        visualizer_evaluations: None,
         descriptor_registry,
         response: DanceEnvelopeResponse::Legacy(response_wire),
         session: response_session,
@@ -169,6 +180,7 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
 fn execute_invocation_envelope(
     invocation: HolonReferenceWire,
     session: Option<SessionStateWire>,
+    evaluations_wire: Option<holons_boundary::VisualizerEvaluationsWire>,
 ) -> DanceResponseEnvelope {
     use holons_core::dances::{execute_dance_v2_locally, DanceInvocation};
     use holons_core::WritableHolon;
@@ -184,6 +196,7 @@ fn execute_invocation_envelope(
         Ok(context) => context,
         Err(error) => {
             return DanceResponseEnvelope {
+                visualizer_evaluations: None,
                 descriptor_registry: None,
                 response: DanceEnvelopeResponse::Reference { result: Err(error) },
                 session,
@@ -192,6 +205,7 @@ fn execute_invocation_envelope(
     };
     let hydration_us = elapsed(total_started);
     let request_started = timestamp();
+    let mut evaluations = None;
     let mut constructing = false;
     let mut request_us = 0;
     let mut execute_us = 0;
@@ -200,6 +214,24 @@ fn execute_invocation_envelope(
         let mut reference = invocation.bind(&context)?;
         reference.with_property_value("InvocationSource", "TrustChannel")?;
         let invocation = DanceInvocation::new(reference)?;
+        let composition = invocation.dance_name()?.to_string() == "ResolveComposition";
+        if evaluations_wire.is_some() && !composition {
+            return Err(HolonError::InvalidParameter(
+                "Evaluation carrier requires ResolveComposition".into(),
+            ));
+        }
+        if composition {
+            let registry = match evaluations_wire {
+                Some(wire) => wire.bind(&context)?,
+                None => {
+                    return Err(HolonError::InvalidParameter(
+                        "Composition requires evaluation carrier".into(),
+                    ))
+                }
+            };
+            context.attach_visualizer_evaluations(&registry);
+            evaluations = Some(registry);
+        }
         constructing = invocation.dance_name()?.to_string()
             == type_names::CoreHolonTypeName::ConstructEffectiveHolonDescriptor.as_holon_name().0;
         if constructing {
@@ -227,7 +259,17 @@ fn execute_invocation_envelope(
         warn!("[effective-descriptor-profile] phase=envelope hydration_us={} request_validation_us={} execute_us={} response_projection_us={} export_us={} total_us={} success={}",
             hydration_us, request_us, execute_us, output_us, export_us, elapsed(total_started), result.is_ok());
     }
+    let (result, visualizer_evaluations) = match (result, evaluations) {
+        (Ok(result), Some(registry)) => {
+            match holons_boundary::VisualizerEvaluationsWire::capture(&registry) {
+                Ok(carrier) => (Ok(result), Some(carrier)),
+                Err(error) => (Err(error), None),
+            }
+        }
+        (result, _) => (result, None),
+    };
     DanceResponseEnvelope {
+        visualizer_evaluations,
         descriptor_registry: None,
         response: DanceEnvelopeResponse::Reference { result },
         session,
@@ -266,6 +308,7 @@ fn create_error_response_envelope(
     };
 
     DanceResponseEnvelope {
+        visualizer_evaluations: None,
         descriptor_registry: None,
         response: DanceEnvelopeResponse::Legacy(response_wire),
         session,

@@ -1,3 +1,4 @@
+import { resolvedValueComposition } from '../../../test-fixtures/resolved-composition';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -12,15 +13,15 @@ const action = await readFile(resolve(process.cwd(), 'conductora/resources/dahn-
 const importer = (text: string) => import(`data:text/javascript;base64,${Buffer.from(text).toString('base64')}`);
 function fixture(role: string, count = 2) {
   const members = Array.from({ length: count }, (_, i) => ({ key: async () => `${role}-${i}`, holonDescriptor: async () => ({ hasInstanceKey: async () => false }), propertyValue: async () => ({ StringValue: `${role}-${i}` }) }));
-  const collection = { length: count, elementType: { effectiveDescriptor: async function () { return this; }, hasInstanceKey: async () => false, instanceProperties: async () => [{ propertyName: async () => 'Key', displayName: async () => 'Key', valueKind: async () => 'StringValue', isArray: async () => false }] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
+  const collection = { length: count, elementType: {}, propertyDescriptors: async () => [{ propertyName: async () => 'Key', displayName: async () => 'Key', valueKind: async () => 'StringValue', isArray: async () => false }], [Symbol.iterator]: () => members[Symbol.iterator]() };
   const slot = { propertyValue: async () => ({ StringValue: role }), key: async () => role === 'diagnostics' ? 'LoadHolons.DiagnosticsSlot' : 'LoadHolons.CommittedHolonsSlot' };
   const parentType = { relatedHolons: async (name: string) => name === 'HasSlot' ? [slot] : [] };
-  const parent = { key: async () => 'action', relatedHolons: vi.fn(async () => [parentType]) };
-  const value = { key: async () => 'scalar', propertyValue: async () => ({ StringValue: 'Scalar' }) };
+  const parent = { versionedKey: async () => 'action', key: async () => 'action', relatedHolons: vi.fn(async () => [parentType]) };
+  const value = { versionedKey: async () => 'scalar', key: async () => 'scalar', propertyValue: async () => ({ StringValue: 'Scalar' }) };
   const valueSlot = { key: async () => 'TableCollection.ValueSlot', propertyValue: async () => ({ StringValue: 'value' }) };
   const selectedType = { relatedHolons: async (name: string) => name === 'HasSlot' ? [valueSlot] : [] };
-  const selected = { key: async () => 'table', propertyValue: async () => ({ StringValue: 'Table' }), relatedHolons: async (name: string) => name === 'DescribedBy' ? [selectedType] : [] };
-  const transaction = { selectCollectionVisualizer: vi.fn(async () => ({ selected })), selectValueVisualizer: vi.fn(async () => ({ selected: value })), dispose: vi.fn() };
+  const selected = { versionedKey: async () => 'table', key: async () => 'table', propertyValue: async () => ({ StringValue: 'Table' }), relatedHolons: async (name: string) => name === 'DescribedBy' ? [selectedType] : [] };
+  const transaction = { selectCollectionVisualizer: vi.fn(async () => ({ selected })), resolvePropertyComposition: vi.fn(async (_property, owner, slot) => resolvedValueComposition(value, owner, slot)), dispose: vi.fn() };
   const materialize = vi.fn(async (ref: unknown) => ({ source: ref === parent ? action : ref === value ? valueSource : source, format: 'ESModule' as const, entrypoint: 'default' }));
   const materialized = new MaterializedVisualizerRuntime(new MaterializedVisualizerCache({ materialize }), importer);
   return { binding: { role, label: role, collection, transaction, parentVisualizer: parent, materialized, isOrdered: false }, slot, parent, transaction, materialize, members };
@@ -71,7 +72,7 @@ it('revokes pending work on context invalidation without disposing the borrowed 
   const f = fixture('diagnostics'); let release!: (value: { selected: { key: () => Promise<string> } }) => void;
   f.transaction.selectCollectionVisualizer.mockImplementation(() => new Promise(resolve => { release = resolve; }));
   mount([f]); await vi.waitFor(() => expect(release).toBeDefined());
-  semanticWork(f.transaction as never).invalidate(); release({ selected: { key: async () => 'table', propertyValue: async () => ({ StringValue: 'Table' }) } });
+  semanticWork(f.transaction as never).invalidate(); release({ selected: { versionedKey: async () => 'table', key: async () => 'table', propertyValue: async () => ({ StringValue: 'Table' }) } });
   await new Promise(resolve => setTimeout(resolve, 0));
   expect(owner.element.textContent).toContain('Semantic context changed'); expect(table()).toBeFalsy();
   owner.dispose(); expect(f.transaction.dispose).not.toHaveBeenCalled();
@@ -99,7 +100,7 @@ it('does not mount a late selection after the action owner is disposed', async (
   const f = fixture('diagnostics'); let release!: (value: { selected: { key: () => Promise<string> } }) => void;
   f.transaction.selectCollectionVisualizer.mockImplementation(() => new Promise(resolve => { release = resolve; }));
   mount([f]); await vi.waitFor(() => expect(release).toBeDefined());
-  owner.dispose(); release({ selected: { key: async () => 'table', propertyValue: async () => ({ StringValue: 'Table' }) } });
+  owner.dispose(); release({ selected: { versionedKey: async () => 'table', key: async () => 'table', propertyValue: async () => ({ StringValue: 'Table' }) } });
   await new Promise(resolve => setTimeout(resolve, 0));
   expect(owner.element.querySelector('table')).toBeNull();
   expect(f.materialize).not.toHaveBeenCalled();
@@ -108,7 +109,7 @@ it('does not mount a late selection after the action owner is disposed', async (
 it('selects projected rows normally and keeps producer order until explicit user sorting', async () => {
   const a = fixture('diagnostics'), b = fixture('committed');
   const activate = vi.fn(); const elementType = { key: async () => 'LoadDiagnostic.Projection' };
-  const select = vi.fn(async () => ({ selected: { key: async () => 'table', propertyValue: async () => ({ StringValue: 'Table' }) } }));
+  const select = vi.fn(async () => ({ selected: { versionedKey: async () => 'table', key: async () => 'table', propertyValue: async () => ({ StringValue: 'Table' }) } }));
   Object.assign(a.transaction, { selectProjectedCollectionVisualizer: select });
   const projected = { ...a.binding, collection: undefined, projection: { elementType, activate, presentation: {
     kind: 'record', displayName: 'Diagnostics', rowIds: ['ten', 'two', 'missing'], defaultRowOrder: ['two', 'ten', 'missing'],

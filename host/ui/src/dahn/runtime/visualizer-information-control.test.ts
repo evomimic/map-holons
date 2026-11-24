@@ -64,3 +64,17 @@ it.each(['explicit', 'owned'])('uses actual selected children and implementation
   expect(owned.isLive()).toBe(false);
   expect(root.composition!()).toHaveLength(0);
 });
+
+
+it.each(['sticky', 'absolute', 'fixed'])('preserves an implementation-owned %s position when binding inspection controls', async position => {
+  const header = document.createElement('th');
+  Object.assign(header.style, { position, top: '0px', left: '0px', zIndex: '3' });
+  document.body.append(header);
+  const ref = { propertyValue: async () => ({ StringValue: 'Column Value' }) } as HolonReference;
+  await bindVisualizerInformationControl(header, {} as MapTransaction, ref, ref, ref, ref);
+  expect(header.style.position).toBe(position);
+  expect(header.style.top).toBe('0px');
+  expect(header.style.left).toBe('0px');
+  expect(header.style.zIndex).toBe('3');
+  expect(header.querySelector('[data-visualizer-information-control]')).not.toBeNull();
+});

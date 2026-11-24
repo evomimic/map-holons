@@ -5,7 +5,7 @@ meta {
   source_files: ["map-core-schema-relationship-types.csv"]
   load_with: ["root.json","abstract-value-types.json","keyrules.json"]
 }
-schema "MAP Core Schema-v0.0.7" {
+schema "MAP Core Schema-v0.0.11" {
 }
 
 def relationship (TypeDescriptor)-[ComponentOf]->(Schema.HolonType) {
@@ -158,10 +158,10 @@ relationship (HolonType.TypeDescriptor)-[OwnedBy]->(HolonSpace.HolonType) {
   extends DeclaredRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target HolonSpace.HolonType
-  TargetBinding Version
+  TargetBinding Lineage
   deletion_semantic Block
   header {
-    description: "Identifies the current holon space that owns a holon; infrastructure supplies this relationship."
+    description: "Identifies the stewarding HolonSpace lineage that owns a holon across Space versions; infrastructure supplies this relationship."
     display_name: "OwnedBy"
     display_plural: "OwnedBy Relationships"
     plural: "OwnedByRelationships"

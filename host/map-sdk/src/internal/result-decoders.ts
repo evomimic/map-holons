@@ -264,3 +264,8 @@ export function expectLoadedTheme(result: MapResultWire): LoadedThemeWire {
   if (typeof result === 'object' && 'LoadedTheme' in result) return result.LoadedTheme;
   throw unexpectedResultVariant('LoadedTheme', result);
 }
+
+export function expectResolvedComposition(result: MapResultWire): import('./wire-types').ResolvedCompositionWire {
+  if (typeof result === 'object' && 'ResolvedComposition' in result) return result.ResolvedComposition;
+  throw unexpectedResultVariant('ResolvedComposition', result);
+}

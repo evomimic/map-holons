@@ -186,6 +186,15 @@ pub fn initialize_live_usage(
     usage.add_related_holons("DescribedBy", vec![usage_type])?;
     usage.add_related_holons("UsesVisualizer", vec![visualizer])?;
     usage.add_related_holons("ForSubjectType", vec![subject_type])?;
+    let agent = super::PersonalPreferences::for_context(context)?.agent.ok_or_else(|| {
+        HolonError::InvalidState(
+            "Personal configuration requires the authorized PersonAgent".into(),
+        )
+    })?;
+    usage.add_related_holons(type_names::DahnRelationshipTypeName::UsageForAgent, vec![agent])?;
+    if let Some(space) = context.get_space_holon()? {
+        usage.add_related_holons(type_names::CoreRelationshipTypeName::OwnedBy, vec![space])?;
+    }
     Ok(usage)
 }
 

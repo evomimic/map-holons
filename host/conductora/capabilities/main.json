@@ -9,6 +9,7 @@
     "core:default",
     "core:window:allow-set-title",
     "core:window:allow-set-size",
+    "core:window:allow-set-position",
     "holochain:allow-is-holochain-ready",
     "core:resources:default",
     "fs:allow-read-text-file",

@@ -17,7 +17,7 @@ export async function loadImportValidator(): Promise<SourceValidator> {
   const schema: unknown = JSON.parse(text);
   if (!schema || typeof schema !== 'object' || Array.isArray(schema)) throw new Error('Import schema must be an object');
   const validator = new SchemaValidatorService();
-  validator.compileSchema('loader-review', schema);
+  validator.registerSchema('loader-review', schema);
   return content => {
     const result = validator.validateJsonString('loader-review', content);
     return { valid: result.valid, diagnostics: [

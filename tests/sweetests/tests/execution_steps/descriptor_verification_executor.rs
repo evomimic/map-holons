@@ -1417,15 +1417,39 @@ async fn verify_book_value_presentation(
         "PathInspector.RootNodeSlot",
     )
     .await;
-    let properties = select(
-        state,
-        context,
-        book.clone(),
-        VisualizerKind::PropertyMap,
-        Some(node.clone()),
-        "HolonInspector.PropertyMapSlot",
-    )
-    .await;
+    let MapResult::ResolvedComposition(composition) = state
+        .dispatch_command(
+            MapCommand::Transaction(TransactionCommand {
+                context: context.clone(),
+                action: TransactionAction::ResolveComposition {
+                    request: holons_core::dahn::composition::CompositionRequest {
+                        owner: node.clone(),
+                        subject: book.clone(),
+                        theme: context
+                            .lookup()
+                            .get_saved_holon_by_key(&"Demo1.DeepOceanTheme".into())
+                            .unwrap()
+                            .into(),
+                        demand_slot: None,
+                        collection_source: None,
+                    },
+                },
+            }),
+            "book_value_composition",
+        )
+        .await
+        .expect("owner-directed Book composition")
+    else {
+        panic!("expected resolved composition")
+    };
+    let (properties_index, properties_binding) = composition
+        .data
+        .bindings
+        .iter()
+        .enumerate()
+        .find(|(_, binding)| binding.parent.is_none() && binding.role == "propertyMap")
+        .expect("presented PropertyMap binding");
+    let properties = &composition.references[properties_binding.selected];
     let mut fields = Vec::new();
     for descriptor in book
         .effective_descriptor()
@@ -1433,31 +1457,36 @@ async fn verify_book_value_presentation(
         .instance_properties()
         .expect("descriptor discovery")
     {
+        use holons_core::dahn::CompositionSubject;
         let name = descriptor.property_name().expect("property name");
-        let property = select(
-            state,
-            context,
-            descriptor.holon().clone(),
-            VisualizerKind::Property,
-            Some(properties.clone()),
-            "DefaultPropertyMapVisualizer.PropertySlot",
-        )
-        .await;
-        let value = select(
-            state,
-            context,
-            descriptor.holon().clone(),
-            VisualizerKind::Value,
-            Some(property.clone()),
-            "GenericProperty.ValueSlot",
-        )
-        .await;
+        let child = |subject_binding| {
+            let matches: Vec<_> = composition
+                .data
+                .bindings
+                .iter()
+                .filter(|binding| {
+                    binding.parent == Some(properties_index)
+                        && binding.property_name.as_deref() == Some(name.0 .0.as_str())
+                        && binding.subject_binding == subject_binding
+                })
+                .collect();
+            assert_eq!(matches.len(), 1, "one direct {subject_binding:?} binding for {name}");
+            let binding = matches[0];
+            assert_eq!(composition.references[binding.owner], *properties);
+            assert_eq!(composition.references[binding.subject], *descriptor.holon());
+            binding
+        };
+        let label = child(CompositionSubject::ScalarPropertyLabel);
+        let value = child(CompositionSubject::ScalarPropertyValue);
         fields.push(serde_json::json!({
             "name": name.to_string(),
+            "label": label.label.as_deref().expect("bound property label"),
             "value": book.property_value(&name).expect("bound value read"),
             "valueType": descriptor.value_type().unwrap().header().type_name().unwrap().0,
-            "property": materialize(context, &property),
-            "visualizer": materialize(context, &value),
+            "labelVisualizer": materialize(context, &composition.references[label.selected]),
+            "labelConfiguration": label.configuration,
+            "visualizer": materialize(context, &composition.references[value.selected]),
+            "configuration": value.configuration,
         }));
     }
     for (name, expected, selected) in [
@@ -1479,7 +1508,7 @@ async fn verify_book_value_presentation(
         assert_eq!(field["value"], expected);
         assert_eq!(field["visualizer"]["selected"], selected);
     }
-    let evidence = serde_json::json!({ "node": materialize(context, &node), "properties": materialize(context, &properties), "fields": fields });
+    let evidence = serde_json::json!({ "node": materialize(context, &node), "properties": materialize(context, properties), "propertiesConfiguration": properties_binding.configuration, "fields": fields });
     if let Some(path) = std::env::var_os("MAP_VALUE_PRESENTATION_EVIDENCE") {
         std::fs::write(path, serde_json::to_vec_pretty(&evidence).unwrap())
             .expect("write acceptance evidence");

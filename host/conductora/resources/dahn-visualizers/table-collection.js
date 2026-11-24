@@ -175,7 +175,7 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         const members = new Map();
         const columns = [];
         const properties = new Map();
-        for (const property of await (await collection.elementType.effectiveDescriptor()).instanceProperties()) {
+        for (const property of await collection.propertyDescriptors()) {
             if (await property.isArray()) continue;
             const id = await property.propertyName();
             properties.set(id, property);
@@ -223,7 +223,7 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         const rowHeight = measured.length ? Math.max(...measured) : nominal;
         const data = measured.reduce((sum, height) => sum + height, 0) + Math.max(0, count - measured.length) * rowHeight;
         const header = this.table?.tHead?.getBoundingClientRect().height || rowHeight;
-        const controls = (this.sortStatus?.offsetHeight || line) + (this.more?.hidden ? 0 : this.more?.offsetHeight || rowHeight);
+        const controls = this.sortStatus?.offsetHeight || line;
         return Math.ceil(controls + header + data + pixel(getComputedStyle(this.table ?? this).borderTopWidth));
     }
     reportContentExtent() {
@@ -243,16 +243,18 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
     disconnectedCallback() { this.observer?.disconnect(); }
     fitColumns() {
         if (!this.table || !this.isConnected) return;
+        this.moreHeader.remove();
         const cells = [...this.table.rows].map(row => [...row.cells]);
         cells.forEach(row => row.forEach(cell => cell.hidden = false));
         const widths = cells[0]?.map(cell => cell.offsetWidth) ?? [];
         const available = this.viewport.clientWidth;
-        // The disclosure occupies its own row, so it consumes no column width.
+        // Reserve header space for disclosure without negotiating a larger parent slot.
         const overflowing = widths.reduce((sum, width) => sum + width, 0) > available;
         this.more.hidden = !overflowing || this.expanded;
         let count = widths.length;
         if (overflowing && !this.expanded) {
-            const budget = Math.max(0, available);
+            this.table.tHead.rows[0].append(this.moreHeader);
+            const budget = Math.max(0, available - this.moreHeader.offsetWidth);
             let used = 0; count = 0;
             for (const width of widths) { if (used + width > budget) break; used += width; count++; }
             // Preserve a readable first column even when it alone exceeds the allocation.
@@ -260,9 +262,10 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         }
         cells.forEach(row => row.forEach((cell, index) => cell.hidden = index >= count));
         this.more.hidden = this.expanded || count === widths.length;
+        if (this.more.hidden) this.moreHeader.remove();
         this.viewport.style.overflowX = this.expanded ? 'auto' : 'hidden';
         if (!this.expanded && widths.length && count === 1) {
-            cells.forEach(row => { if (row[0]) row[0].style.maxWidth = `${Math.max(0, available)}px`; });
+            cells.forEach(row => { if (row[0]) row[0].style.maxWidth = `${Math.max(0, available - this.moreHeader.offsetWidth)}px`; });
         } else cells.forEach(row => { if (row[0]) row[0].style.maxWidth = '32rem'; });
         this.reportContentExtent();
     }
@@ -304,6 +307,7 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         table.style.borderTop = 'var(--dahn-table-cell-border-width) var(--dahn-table-cell-border-style) var(--dahn-table-cell-border-color)';
         table.style.borderLeft = table.style.borderTop;
         table.style.width = 'max-content';
+        table.style.minWidth = '100%';
         this.table = table;
         const headerRow = document.createElement('tr');
         this.columnHeadings = new Map();
@@ -351,7 +355,7 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
             header.style.whiteSpace = 'nowrap';
             header.style.maxWidth = '32rem';
             Object.assign(header.style, { position: 'sticky', top: '0', zIndex: '2' });
-            if (column.id === 'Key') Object.assign(header.style, { left: '0', zIndex: '3' });
+            if (column.id === presentation.columns[0]?.id) Object.assign(header.style, { left: '0', zIndex: '3' });
             headerRow.append(header);
         }
         const head = document.createElement('thead');
@@ -403,7 +407,7 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
                 cell.style.borderRight = cell.style.borderBottom;
                 cell.style.padding = 'calc(var(--dahn-table-cell-padding) / 3) calc(var(--dahn-table-cell-padding) * 2 / 3)';
                 Object.assign(cell.style, { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '32rem' });
-                if (column.id === 'Key') Object.assign(cell.style, { position: 'sticky', left: '0', zIndex: '1', background: 'var(--dahn-collection-surface-background)' });
+                if (column.id === presentation.columns[0]?.id) Object.assign(cell.style, { position: 'sticky', left: '0', zIndex: '1', background: 'var(--dahn-collection-surface-background)' });
                 row.append(cell);
             }
             this.rowElements.set(rowId, row);
@@ -418,9 +422,17 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         viewport.append(table);
         this.viewport = viewport;
         const more = document.createElement('button');
-        more.type = 'button'; more.textContent = 'More columns';
+        more.type = 'button'; more.textContent = 'More columns ›';
+        more.setAttribute('aria-label', 'More columns');
+        more.title = 'Show additional columns; scroll horizontally to compare properties';
         more.dataset.tableCollection = 'more';
-        Object.assign(more.style, { font: 'inherit', color: 'inherit', background: 'transparent', border: 'var(--dahn-table-cell-border-width) var(--dahn-table-cell-border-style) var(--dahn-table-cell-border-color)', padding: 'calc(var(--dahn-table-cell-padding) / 3) calc(var(--dahn-table-cell-padding) * 2 / 3)', cursor: 'pointer', maxWidth: '100%', flexShrink: '0', alignSelf: 'flex-start' });
+        Object.assign(more.style, { font: 'inherit', fontWeight: '600', color: 'var(--dahn-action-text-color)', background: 'var(--dahn-action-surface-background)', border: '1px solid currentColor', borderRadius: '3px', padding: '2px 6px', cursor: 'pointer', whiteSpace: 'nowrap' });
+        const moreHeader = document.createElement('th');
+        moreHeader.dataset.tableCollection = 'column-disclosure';
+        moreHeader.setAttribute('aria-label', 'Additional columns');
+        Object.assign(moreHeader.style, { position: 'sticky', top: '0', right: '0', zIndex: '4', width: '1px', textAlign: 'right', whiteSpace: 'nowrap', padding: '2px 4px', background: 'var(--dahn-table-header-surface-background)', color: 'var(--dahn-table-header-text-color)', borderBottom: table.style.borderTop, borderLeft: table.style.borderTop });
+        moreHeader.append(more);
+        this.moreHeader = moreHeader;
         more.setAttribute('aria-expanded', 'false');
         more.addEventListener('click', () => {
             this.expanded = true; more.setAttribute('aria-expanded', 'true');
@@ -432,7 +444,7 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         sortStatus.setAttribute('role', 'status');
         Object.assign(sortStatus.style, { flexShrink: '0', overflowWrap: 'anywhere' });
         this.sortStatus = sortStatus;
-        section.append(sortStatus, more, viewport);
+        section.append(sortStatus, viewport);
         if (!presentation.rowIds.length) {
             const empty = document.createElement('p');
             empty.setAttribute('role', 'status'); empty.textContent = 'No items';

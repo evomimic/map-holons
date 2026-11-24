@@ -53,10 +53,21 @@ async fn load_space_navigator(runtime: &Runtime) {
         )
         .await
         .expect("Space Navigator import must succeed");
-    assert!(
-        matches!(result, MapResult::Reference(HolonReference::Transient(_))),
-        "Space Navigator import must return its load response"
-    );
+    let MapResult::Reference(response @ HolonReference::Transient(_)) = result else {
+        panic!("Space Navigator import must return its load response: {result:?}");
+    };
+    let status = response.property_value("LoadCommitStatus").unwrap();
+    if status != Some(base_types::BaseValue::StringValue("Complete".into())) {
+        let errors = response.related_holons("HasLoadError").unwrap();
+        let errors = errors
+            .read()
+            .unwrap()
+            .get_members()
+            .iter()
+            .map(|error| error.property_value("ErrorMessage").unwrap())
+            .collect::<Vec<_>>();
+        panic!("Space Navigator import did not complete: {status:?}; errors: {errors:?}");
+    }
 }
 
 pub async fn importing_space_navigator_affords_its_dancer_from_the_local_space(runtime: &Runtime) {

@@ -202,7 +202,7 @@ export default class PathInspectorElement extends HTMLElement {
     if (this.attention) return { status: 'refused', reason: 'Restore the visible occurrence before maximizing a sibling.' };
     if (!this.view?.ready || occurrence.pending || occurrence.visualizerReplacement || occurrence.cancel) return { status: 'refused', reason: 'Occurrence or viewport is not ready.' };
     this.attention = { id: occurrence.id, view: { scale: this.view.scale, x: this.viewport.scrollLeft, y: this.viewport.scrollTop } };
-    this.applyAttentionProjection();
+    if (!this.applyAttentionProjection()) return { status: 'refused', reason: 'Node did not accept the attention allocation.' };
     return { status: 'applied', value: undefined };
   }
   clearAttentionProjection() {
@@ -222,10 +222,20 @@ export default class PathInspectorElement extends HTMLElement {
     const occurrence = this.occurrences.find(item => item.id === this.attention.id);
     if (!occurrence) { this.clearAttentionProjection(); this.attention = undefined; return; }
     const insets = this.regionInsets(occurrence.id);
-    const width = Math.max(this.profile().horizontal.minimum[2] + insets.width, this.viewportWidth || this.viewport.clientWidth);
-    const height = Math.max(this.profile().vertical.minimum[2] + insets.height, this.viewportHeight || this.viewport.clientHeight);
+    // ResizeObserver and Theme borders can contain fractional CSS pixels. The
+    // participation contract takes whole pixels inside the owner's frame.
+    const profile = this.profile();
+    const contentWidth = Math.max(Math.ceil(profile.horizontal.minimum[2]), Math.floor((this.viewportWidth || this.viewport.clientWidth) - insets.width));
+    const contentHeight = Math.max(Math.ceil(profile.vertical.minimum[2]), Math.floor((this.viewportHeight || this.viewport.clientHeight) - insets.height));
+    const width = contentWidth + insets.width, height = contentHeight + insets.height;
     if (!(width > 0 && height > 0)) return;
     const region = this.regions.get(occurrence.id);
+    // Acceptance precedes any frame/view change or public maximized state.
+    if (!this.assign(occurrence, { width: contentWidth, height: contentHeight, presentation: 'inspect' })) {
+      this.clearAttentionProjection();
+      this.attention = undefined;
+      return false;
+    }
     this.dataset.attentionOccurrence = occurrence.id;
     occurrence.element.setOccurrenceAttentionState?.(true);
     for (const [id, item] of this.regions) {
@@ -235,10 +245,10 @@ export default class PathInspectorElement extends HTMLElement {
     }
     this.lineage.style.visibility = 'hidden';
     Object.assign(region.style, { position: 'absolute', gridArea: 'auto', left: '0', top: '0', width: `${width}px`, height: `${height}px`, boxSizing: 'border-box' });
-    this.assign(occurrence, { width: width - insets.width, height: height - insets.height, presentation: 'inspect' });
     this.view.scale = 1;
     this.view.setGeometry(width, height, width, height);
     this.view.position(0, 0);
+    return true;
   }
   allocateRows() {
     this.clearAttentionProjection();
@@ -300,8 +310,8 @@ export default class PathInspectorElement extends HTMLElement {
       region.dataset.columnAllocation = allocations[(occurrence.column ?? 1) - 1];
       const insets = this.regionInsets(occurrence.id);
       const allocation = {
-        width: Math.max(0, this.columnWidths[(occurrence.column ?? 1) - 1] - insets.width),
-        height: Math.max(0, heights[row] - insets.height),
+        width: Math.max(0, Math.floor(this.columnWidths[(occurrence.column ?? 1) - 1] - insets.width)),
+        height: Math.max(0, Math.floor(heights[row] - insets.height)),
         ...(this.pendingPresentations?.has(occurrence.id) ? { presentation: this.pendingPresentations.get(occurrence.id) } : {}),
       };
       if (this.attention?.id !== occurrence.id && this.assign(occurrence, allocation)) this.pendingPresentations?.delete(occurrence.id);
@@ -574,29 +584,7 @@ export default class PathInspectorElement extends HTMLElement {
       if (traversalLabel) region.setAttribute('aria-description', `Reached through ${traversalLabel}${traversal?.qualifier ? ` (${traversal.qualifier})` : ''}`);
       else region.removeAttribute('aria-description');
       region.setAttribute('aria-busy', String(!!occurrence.pending || !!occurrence.visualizerReplacement));
-      const status = region.querySelector(':scope > [data-path-occurrence-status]');
-      status.hidden = !occurrence.message;
-      const floatingStatus = occurrence.requestAxis === 'horizontal' || occurrence.axis === 'horizontal';
-      Object.assign(status.style, { position: 'absolute',
-        left: '0', right: '0', top: occurrence.axis === 'horizontal' ? '0' : 'auto',
-        bottom: occurrence.axis === 'horizontal' ? 'auto' : '0', zIndex: '1',
-        background: 'var(--dahn-panel-surface-background)' });
-      status.style.display = status.hidden ? 'none' : 'flex';
-      status.textContent = occurrence.message ?? '';
-      if (occurrence.retry) {
-        const retry = document.createElement('button');
-        retry.type = 'button'; retry.textContent = 'Retry opening holon';
-        retry.addEventListener('click', occurrence.retry);
-        Object.assign(retry.style, { font: 'inherit', color: 'var(--dahn-action-text-color)', background: 'var(--dahn-action-surface-background)', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)' });
-        status.append(retry);
-      }
-      if (occurrence.cancel) {
-        const cancel = document.createElement('button');
-        cancel.type = 'button'; cancel.textContent = 'Cancel';
-        cancel.addEventListener('click', occurrence.cancel);
-        Object.assign(cancel.style, { font: 'inherit', color: 'var(--dahn-action-text-color)', background: 'var(--dahn-action-surface-background)', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)' });
-        status.append(cancel);
-      }
+      this.showOccurrenceStatus(region, occurrence);
       this.showVisualizerReplacement(region, occurrence.visualizerReplacement);
     });
     this.pendingFrontier = destination?.id ?? this.pendingFrontier;
@@ -611,6 +599,43 @@ export default class PathInspectorElement extends HTMLElement {
     this.pendingFrontier = destination?.id;
   }
 
+  /** Keep ordinary messages and recovered contract failures on the same status surface. */
+  showOccurrenceStatus(region, occurrence) {
+    const status = region.querySelector(':scope > [data-path-occurrence-status]');
+    status.hidden = !occurrence.message;
+    const floatingStatus = occurrence.requestAxis === 'horizontal' || occurrence.axis === 'horizontal';
+    Object.assign(status.style, { position: 'absolute',
+      left: '0', right: '0', top: occurrence.axis === 'horizontal' ? '0' : 'auto',
+      bottom: occurrence.axis === 'horizontal' ? 'auto' : '0', zIndex: '1',
+      background: 'var(--dahn-panel-surface-background)' });
+    status.style.display = status.hidden ? 'none' : 'flex';
+    status.textContent = occurrence.message ?? '';
+    if (occurrence.retry) {
+      const retry = document.createElement('button');
+      retry.type = 'button'; retry.textContent = 'Retry opening holon';
+      retry.addEventListener('click', occurrence.retry);
+      Object.assign(retry.style, { font: 'inherit', color: 'var(--dahn-action-text-color)', background: 'var(--dahn-action-surface-background)', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)' });
+      status.append(retry);
+    }
+    if (occurrence.cancel) {
+      const cancel = document.createElement('button');
+      cancel.type = 'button'; cancel.textContent = 'Cancel';
+      cancel.addEventListener('click', occurrence.cancel);
+      Object.assign(cancel.style, { font: 'inherit', color: 'var(--dahn-action-text-color)', background: 'var(--dahn-action-surface-background)', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)' });
+      status.append(cancel);
+    }
+  }
+  appendRecoveryAction(status, label, action) {
+    const button = document.createElement('button');
+    button.type = 'button'; button.textContent = label;
+    Object.assign(button.style, { font: 'inherit', cursor: 'pointer',
+      color: 'var(--dahn-action-text-color)', background: 'var(--dahn-action-surface-background)',
+      padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)',
+      border: '1px solid var(--dahn-slot-border-color)', borderRadius: 'var(--dahn-action-corner-radius)' });
+    button.addEventListener('click', () => action(button));
+    status.append(button);
+  }
+
   profile() {
     return participationProfile(parseFloat(getComputedStyle(this).fontSize) || 16);
   }
@@ -619,7 +644,11 @@ export default class PathInspectorElement extends HTMLElement {
     if (!occurrence.element.visualizerOperations && !occurrence.element.setContext) return;
     try {
       applyNodePresentation(occurrence.element, allocation);
-      delete this.regions.get(occurrence.id).dataset.contractViolation;
+      const region = this.regions.get(occurrence.id);
+      if (region.dataset.contractViolation) {
+        delete region.dataset.contractViolation;
+        this.showOccurrenceStatus(region, occurrence);
+      }
       return true;
     } catch (error) {
       const region = this.regions.get(occurrence.id);
@@ -627,12 +656,11 @@ export default class PathInspectorElement extends HTMLElement {
       const status = region.querySelector(':scope > [data-path-occurrence-status]');
       status.hidden = false; status.style.display = 'flex';
       status.textContent = `Presentation contract violation: ${error.message}. `;
-      const retry = document.createElement('button'); retry.textContent = 'Retry presentation'; retry.type = 'button';
-      retry.addEventListener('click', () => this.assign(occurrence, allocation)); status.append(retry);
+      this.appendRecoveryAction(status, 'Retry presentation', () => this.allocateRows());
       if (occurrence.inspectVisualizer) {
-        const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = 'Choose Visualizer';
-        inspect.addEventListener('click', () => occurrence.inspectVisualizer(inspect)); status.append(inspect);
+        this.appendRecoveryAction(status, 'Choose Visualizer', button => occurrence.inspectVisualizer(button));
       }
+      return false;
     }
   }
 

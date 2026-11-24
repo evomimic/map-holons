@@ -1,6 +1,6 @@
 {
-  "release_identity": "MAP Core Schema-v0.0.7",
-  "core_schema_key": "MAP Core Schema-v0.0.7",
+  "release_identity": "MAP Core Schema-v0.0.11",
+  "core_schema_key": "MAP Core Schema-v0.0.11",
   "core_schema_space_key": "MAP.CoreSchemaSpace",
   "packages": [
     {
@@ -48,6 +48,10 @@
       "import_directory": "theme"
     },
     {
+      "name": "agent-spaces",
+      "import_directory": "agent-spaces"
+    },
+    {
       "name": "dahn",
       "import_directory": "dahn"
     }
@@ -55,91 +59,107 @@
   "imports": [
     {
       "path": "imports/core/abstract-value-types.json",
-      "sha256": "30ee634091409287e93d42cd7b4ed32905179a4cf384733aa258d2a9aee6cf5a"
+      "sha256": "ae4698df65b1f80b2bf19a4205d2058893199a45da5198539a41ebacd26310cf"
     },
     {
       "path": "imports/core/concrete-value-types.json",
-      "sha256": "5dddfedcc9b82c7fe2def38ee4adbfa4d208925f60011172f8f8ca91ea3566d2"
+      "sha256": "2437f753c91f1cc5cc3cb00f906b596ece330cff50a1a1e47aae6daa9cc36b29"
     },
     {
       "path": "imports/core/keyrules.json",
-      "sha256": "679bd2004c24461d45e2fb341f809281feee0261a51ec4dd63b17090174c7046"
+      "sha256": "e51dc14c100d347d56e4b04b2b6c6b47b5e7c48931b9580fef981a5400c83e6e"
     },
     {
       "path": "imports/core/loader-types.json",
-      "sha256": "b99f2c13d45493a15a87b3309434a2a45e5f7a91b4d3601ce23cc7be8d7aa1d0"
+      "sha256": "40bd19967ca926c4b74dedf2fbcbae7a27f1af87a34ced1aade720b46fc75b1e"
     },
     {
       "path": "imports/core/operator-types.json",
-      "sha256": "0671cbd13cfb1e46f2f8562e101e641bfa1cb3e0c7f242f77f7edb48e2065b84"
+      "sha256": "f537578d215b97bfea6d3810dcd42a474a99c9d700ff21b28f9b6517809b0aaa"
     },
     {
       "path": "imports/core/property-types.json",
-      "sha256": "18c5e53c30a9aa02e8316df1adcbd36defd96f3fe5475f7d143eeaf9f0af2520"
+      "sha256": "9dc204e9a801c935eb52dbf699a01d92be37218695c1b11cfd010685c95af999"
     },
     {
       "path": "imports/core/relationship-types.json",
-      "sha256": "6b1ebb1f4dac57e8b3534c0cd01e4cc898e30ca05a1c3603b468a2df1e050a09"
+      "sha256": "be6f263d250e12566defc3020ac65ef7c5a8a14f0977ec7cd4617f032c6f52e4"
     },
     {
       "path": "imports/core/root.json",
-      "sha256": "afcb88510eab8bcff17b1fe8dd3319fad942341f7972856102c6faa0473bd1ff"
+      "sha256": "ac5523c0335d18c12e7359bb282f0210a9827998bd5a5580909abfd454628149"
     },
     {
       "path": "imports/core/validation.json",
-      "sha256": "91a17f65e6fae82e21bb71c299580c0d3ffa8735aa20c28b30920b4de3125c76"
+      "sha256": "5a159f9139d8bd05a4a6810be8623be55d2b29042a7d9318bd75bda35cf4868a"
     },
     {
       "path": "imports/core/value-constraint-types.json",
-      "sha256": "fb83ca55be285a3604d5b74bae7b7ac30a2d10e55a824de74b587060777de969"
+      "sha256": "c9df6eeee086534ea1ebdca879a1719a4461f87f3e8133e7671a0adbba8016da"
     },
     {
       "path": "imports/validation/schema.json",
-      "sha256": "0d2e69225060e45eabda7c84ef67bc8110e234bb68598c2051faff031fdc1c56"
+      "sha256": "47c0dfc70e8dc244d25d8c21935c20ddb7ed469d0e914241f50ba7a2056e5a7f"
     },
     {
       "path": "imports/dance/schema.json",
-      "sha256": "94f3d1cf33041fd69d83059018eb23ab4aece104e523bdee316f6df8fa95e80a"
+      "sha256": "de914572b8f1e984717be9b053f12bdb60c1219d0079c6eab0207d9f2a953c69"
     },
     {
       "path": "imports/dancer/schema.json",
-      "sha256": "6927ad47307bb083c4fdf2b2c3f5310bfa26cc7ed8d5311a0ef5f9ec1b8043a1"
+      "sha256": "102eaa6e9475ed32c608da54d2cc2f6e1c3e8571ccabf60c684bcf68286e501c"
     },
     {
       "path": "imports/commands/schema.json",
-      "sha256": "833f379bd34de02e3295d6459795ca8df1e3acf3fca5097a98682271424e3406"
+      "sha256": "e81c73f0ba1f3073a33dda73f35fc5e85b41ff36cd10b10f00c596a6e610154e"
     },
     {
       "path": "imports/descriptor-runtime/schema.json",
-      "sha256": "321c351dba17a5c0f6cc85585e8dbfb66599413e95e2bc232e01cb405db8642a"
+      "sha256": "1a664a2e72de9cfab7b063d82a725ccd464110d1fc465bb97de2401c0ecd6edd"
     },
     {
       "path": "imports/query/schema.json",
-      "sha256": "8bc7cb8eb296eb0e726ff96e34b7ad7d18a8277b4f1848c5736f4ae17a329e40"
+      "sha256": "5299780efad6640ff8fb3652c24f74534229a733f2556cc4d04a34cc409e6aa4"
     },
     {
       "path": "imports/query-dance/schema.json",
-      "sha256": "e5eade3f0b9f66381d0f42453f18a407403bf5de4878af7be6547f5d7d54a659"
+      "sha256": "e7992045764ca4f6cbecedcb61dc954f46233d03585244556bef7ccb444d11b3"
     },
     {
       "path": "imports/design-tokens/schema.json",
-      "sha256": "d5c632ed9afc580c77e5ca34020937945a996eca0028fbf959cfab04a01c3aad"
+      "sha256": "6906a5ee90d03c50f3b9370cc79852a4e43128704901038c44f9149c9faf6423"
     },
     {
       "path": "imports/meta-design-system/schema.json",
-      "sha256": "3a6a4a27dcefd21db4b3974e30fba82820916ae23161c5506bc31fe72a6289cc"
+      "sha256": "a5aab4ff64eb07b89590ab281619f29afc501eb96a2ba1ce6c9037c86fc98ec9"
+    },
+    {
+      "path": "imports/theme/deep-ocean.json",
+      "sha256": "b8e6ff7f89f3fe2cd983c995c20c5662a7e8cbfff0857f8a5c8d3a01241b631a"
+    },
+    {
+      "path": "imports/theme/forest-sanctuary.json",
+      "sha256": "857e82e14f50fe27b14a64d76aba44d3ff36dc15d7af1f6598cb2858003ba8fa"
     },
     {
       "path": "imports/theme/schema.json",
-      "sha256": "4aba924fdcba7a94c14e944a30756d84824828c64df83e9fcf1621c341784c4e"
+      "sha256": "95b891afe4470dd47fd1aab89363b857186cb40fa5e3484265be3c05ca09aa80"
+    },
+    {
+      "path": "imports/theme/warm-parchment.json",
+      "sha256": "e1c9a59ae3383c2375056d532fa64e5433c2eae7586374d023ae414a79741965"
+    },
+    {
+      "path": "imports/agent-spaces/schema.json",
+      "sha256": "f1345d5222bef94260761ba069d05f110331b528da1208a183566a9d37a28d5c"
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "eb5e834b3dab3341c66dff1f503ed56613ef8a528d6eff3e5589f61f425b3791"
+      "sha256": "5a5e53d9c69f9a87525b333be2b4129b9edf9b4a7b865c386653c70fd0629b0d"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
-      "sha256": "06bef9b22bba670c67110f531207b805cfd775de910c45b647e92298c0fc5327"
+      "sha256": "9d00e269021e1aa091edeb86d35d3406c89f80d1144f7c3bf95bf9b578e815e8"
     }
   ],
   "required_holons": [
@@ -157,6 +177,10 @@
     },
     {
       "key": "(AnyOf.HolonType)-[Predicates]->(QueryPredicate.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(BioSocialAgent.Agent)-[HasInterior]->(HolonSpace.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
@@ -560,6 +584,10 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(HolonSpace.HolonType)-[IsInteriorOf]->(BioSocialAgent.Agent)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(HolonSpace.HolonType)-[OffersTheme]->(Theme.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
@@ -581,6 +609,14 @@
     },
     {
       "key": "(HolonType.TypeDescriptor)-[CommandPayloadTypeFor]->(CommandType.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[CompositionReferencesOf]->(ResolvedComposition.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[CompositionSubjectOf]->(ResolveCompositionRequest.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -920,6 +956,14 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(PersonAgent.BioSocialAgent)-[HasPersonalVisualizerPreference]->(VisualizerPreference.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(PersonAgent.BioSocialAgent)-[HasPersonalVisualizerUsage]->(VisualizerUsage.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(PresentationActionState.HolonType)-[ActionStateForOperator]->(VisualizerOperator.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
@@ -1072,7 +1116,15 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(RelationshipType.TypeDescriptor)-[InitialCollectionSourceOf]->(VisualizerSlot.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(RelationshipType.TypeDescriptor)-[PluralNavigableInEffectiveHolonDescriptor]->(EffectiveHolonDescriptor.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(RelationshipType.TypeDescriptor)-[SelectedCollectionSourceOf]->(ResolveCompositionRequest.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -1088,11 +1140,31 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(ResolveCompositionRequest.HolonType)-[CompositionSubject]->(HolonType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(ResolveCompositionRequest.HolonType)-[CompositionTheme]->(Theme.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(ResolveCompositionRequest.HolonType)-[RequestedCompositionSlot]->(VisualizerSlot.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(ResolveCompositionRequest.HolonType)-[SelectedCollectionSource]->(RelationshipType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(ResolveVisualizerUsageRequest.HolonType)-[UsageSlot]->(VisualizerSlot.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(ResolveVisualizerUsageRequest.HolonType)-[UsageSubjectType]->(TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(ResolvedComposition.Projection)-[CompositionReferences]->(HolonType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
@@ -1122,6 +1194,10 @@
     {
       "key": "(SeedHolons.HolonType)-[SeedPredicate]->(QueryPredicate.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(Theme.HolonType)-[CompositionThemeOf]->(ResolveCompositionRequest.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(Theme.HolonType)-[ForMetaDesignSystem]->(MetaDesignSystem.HolonType)",
@@ -1192,7 +1268,15 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(TypeDescriptor)-[HasConditionalSlotDefault]->(VisualizerSlotDefault.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(TypeDescriptor)-[HasSlotPreference]->(VisualizerSlotPreference.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(TypeDescriptor)-[HasSubjectVisualizerPreference]->(VisualizerPreference.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -1288,6 +1372,10 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(Visualizer.HolonType)-[ChosenByVisualizerPreference]->(VisualizerPreference.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(Visualizer.HolonType)-[ConsumesDesignToken]->(DesignToken.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
@@ -1310,6 +1398,10 @@
     {
       "key": "(Visualizer.HolonType)-[OffersOperator]->(VisualizerOperator.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(Visualizer.HolonType)-[RecommendedBySlotDefault]->(VisualizerSlotDefault.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(Visualizer.HolonType)-[UsedByVisualizerUsage]->(VisualizerUsage.HolonType)",
@@ -1396,6 +1488,26 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(VisualizerPreference.HolonType)-[PreferenceForAgent]->(PersonAgent.BioSocialAgent)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerPreference.HolonType)-[PreferenceForSlot]->(VisualizerSlot.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerPreference.HolonType)-[PreferenceForSubjectType]->(TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerPreference.HolonType)-[PreferredUsage]->(VisualizerUsage.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerPreference.HolonType)-[PreferredVisualizer]->(Visualizer.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(VisualizerSlot.HolonType)-[AcceptsVisualizerType]->(MetaVisualizerType.MetaHolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
@@ -1408,11 +1520,27 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(VisualizerSlot.HolonType)-[HasDefaultDeclaration]->(VisualizerSlotDefault.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerSlot.HolonType)-[HasScopedVisualizerPreference]->(VisualizerPreference.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(VisualizerSlot.HolonType)-[HasSelectedUsage]->(VisualizerUsage.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(VisualizerSlot.HolonType)-[HasVisualizerPreference]->(VisualizerSlotPreference.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerSlot.HolonType)-[InitialCollectionSource]->(RelationshipType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerSlot.HolonType)-[RequestedCompositionSlotOf]->(ResolveCompositionRequest.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -1429,6 +1557,18 @@
     },
     {
       "key": "(VisualizerSlot.HolonType)-[UsesNodeActionsContract]->(NodeActionsContract.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerSlotDefault.HolonType)-[DefaultForSlot]->(VisualizerSlot.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerSlotDefault.HolonType)-[DefaultForSubjectType]->(TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerSlotDefault.HolonType)-[RecommendsVisualizer]->(Visualizer.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
@@ -1460,6 +1600,10 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(VisualizerUsage.HolonType)-[PreferredByVisualizerPreference]->(VisualizerPreference.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(VisualizerUsage.HolonType)-[PropertySalienceOverrides]->(PropertySalienceOverride.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
@@ -1473,6 +1617,10 @@
     },
     {
       "key": "(VisualizerUsage.HolonType)-[SelectedForSlot]->(VisualizerSlot.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerUsage.HolonType)-[UsageForAgent]->(PersonAgent.BioSocialAgent)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
@@ -1592,6 +1740,10 @@
       "type": "RelationshipValidationRule.HolonType"
     },
     {
+      "key": "Agent.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
       "key": "AgreementValidationRule.HolonType",
       "type": "MetaValidationRule.MetaHolonType"
     },
@@ -1656,6 +1808,14 @@
       "type": "MetaCommandType.MetaHolonType"
     },
     {
+      "key": "BioSocialAgent.Agent",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "BooleanPropertyValueDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType"
+    },
+    {
       "key": "BooleanValidationRule.HolonType",
       "type": "MetaValidationRule.MetaHolonType"
     },
@@ -1670,6 +1830,10 @@
     {
       "key": "BytesLengthConstraint.ConstraintType",
       "type": "MetaConstraintType.MetaHolonType"
+    },
+    {
+      "key": "BytesPropertyValueDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType"
     },
     {
       "key": "BytesValidationRule.HolonType",
@@ -1705,6 +1869,10 @@
     },
     {
       "key": "CanvasGap.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "CanvasHeadingFontFamily.DesignToken",
       "type": "DesignToken.HolonType"
     },
     {
@@ -1888,16 +2056,52 @@
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
+      "key": "CompositionActivation.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType"
+    },
+    {
+      "key": "CompositionActivation.MapEnumValueType.Demand",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "CompositionActivation.MapEnumValueType.Presentation",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
       "key": "CompositionActivation.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
-      "key": "CompositionKind.PropertyType",
+      "key": "CompositionData.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
       "key": "CompositionRole.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "CompositionSubject.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType"
+    },
+    {
+      "key": "CompositionSubject.MapEnumValueType.AffordedAction",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "CompositionSubject.MapEnumValueType.OwnerSubject",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "CompositionSubject.MapEnumValueType.ScalarPropertyLabel",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "CompositionSubject.MapEnumValueType.ScalarPropertyValue",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "CompositionSubject.MapEnumValueType.SelectedCollection",
+      "type": "MetaEnumVariantValueType.MetaValueType"
     },
     {
       "key": "CompositionSubject.PropertyType",
@@ -2076,6 +2280,10 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "DefaultPropertyMapVisualizer.LabelSlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
       "key": "DefaultPropertyMapVisualizer.PropertyMapVisualizer",
       "type": "DefaultPropertyMapVisualizer.PropertyMapVisualizerType"
     },
@@ -2085,6 +2293,10 @@
     },
     {
       "key": "DefaultPropertyMapVisualizer.PropertySlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
+      "key": "DefaultPropertyMapVisualizer.ValueSlot",
       "type": "VisualizerSlot.HolonType"
     },
     {
@@ -2201,6 +2413,10 @@
     },
     {
       "key": "Demo1.DeepOceanThemeCanvasGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.DeepOceanThemeCanvasHeadingFontFamily",
       "type": "ThemeTokenAssignment.HolonType"
     },
     {
@@ -2388,6 +2604,266 @@
       "type": "ThemeTokenAssignment.HolonType"
     },
     {
+      "key": "Demo1.ForestSanctuaryTheme",
+      "type": "Theme.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryTheme.CollectionNavigationSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryTheme.CollectionNavigationTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryTheme.RelationshipNavigationSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryTheme.RelationshipNavigationTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryTheme.ViewControlSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryTheme.ViewControlTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeActionCornerRadius",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeActionHoverSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeActionPaddingBlock",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeActionPaddingInline",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeActionSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeActionTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCanvasContentMinHeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCanvasFontFamily",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCanvasFontSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCanvasFontWeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCanvasGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCanvasHeadingFontFamily",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCanvasHeadingFontWeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCanvasLineHeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCanvasPadding",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCanvasSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCanvasTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCollectionHeaderSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCollectionHeadingFontSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCollectionHeadingFontWeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCollectionSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeCollectionTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeControlGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeFocusRingColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeFocusRingWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeInspectorContentMinHeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeInspectorRailWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeLauncherDismissDuration",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeLauncherIndicatorColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeLauncherIndicatorDuration",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeLauncherIndicatorSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeLauncherIndicatorWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeLauncherPadding",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeLauncherPhaseGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeLauncherSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeLauncherTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeMutedTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeNodeHeadingFontSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemePanelCornerRadius",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemePanelSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemePropertiesDisclosureFocusColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemePropertiesHeadingFontSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemePropertiesHeadingFontWeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemePropertiesHeadingGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemePropertiesRowGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemePropertyColumnGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemePropertyNameMinWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeSlotBorderColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeSlotBorderStyle",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeSlotBorderWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeSlotPadding",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeTableCellBorderColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeTableCellBorderStyle",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeTableCellBorderWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeTableCellPadding",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeTableHeaderFontWeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeTableHeaderSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.ForestSanctuaryThemeTableHeaderTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
       "key": "Demo1.MetaDesignSystem",
       "type": "MetaDesignSystem.HolonType"
     },
@@ -2461,6 +2937,10 @@
     },
     {
       "key": "Demo1.WarmParchmentThemeCanvasGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "Demo1.WarmParchmentThemeCanvasHeadingFontFamily",
       "type": "ThemeTokenAssignment.HolonType"
     },
     {
@@ -2804,6 +3284,10 @@
       "type": "HolonValidationRule.HolonType"
     },
     {
+      "key": "EnumPropertyValueDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType"
+    },
+    {
       "key": "EnumTokenMembership.ValidationRule",
       "type": "EnumValueValidationRule.HolonType"
     },
@@ -2936,6 +3420,10 @@
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
+      "key": "FirstName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
       "key": "FocusRingColor.DesignToken",
       "type": "DesignToken.HolonType"
     },
@@ -3064,6 +3552,10 @@
       "type": "DanceImplementation.HolonType"
     },
     {
+      "key": "GuestResolveComposition.DanceImplementation",
+      "type": "DanceImplementation.HolonType"
+    },
+    {
       "key": "GuestResolveVisualizerUsage.DanceImplementation",
       "type": "DanceImplementation.HolonType"
     },
@@ -3122,6 +3614,22 @@
     {
       "key": "HolonInspector.VisualizerControlsSlot",
       "type": "VisualizerSlot.HolonType"
+    },
+    {
+      "key": "HolonInspectorActionsSlotDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType"
+    },
+    {
+      "key": "HolonInspectorControlsSlotDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType"
+    },
+    {
+      "key": "HolonInspectorPropertyMapSlotDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType"
+    },
+    {
+      "key": "HolonInspectorTitleBarSlotDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType"
     },
     {
       "key": "HolonInspectorTypeScript.VisualizerImplementation",
@@ -3224,6 +3732,10 @@
       "type": "HolonValidationRule.HolonType"
     },
     {
+      "key": "IntegerPropertyValueDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType"
+    },
+    {
       "key": "IntegerValidationRule.HolonType",
       "type": "MetaValidationRule.MetaHolonType"
     },
@@ -3302,6 +3814,10 @@
     {
       "key": "KeyUniqueness.ValidationRule",
       "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "LastName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
       "key": "LauncherDismissDuration.DesignToken",
@@ -3468,6 +3984,10 @@
       "type": "VisualizerSlot.HolonType"
     },
     {
+      "key": "LoadHolonsResultTitleBarSlotDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType"
+    },
+    {
       "key": "LoadRequest.Projection",
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
@@ -3532,51 +4052,55 @@
       "type": "DanceImplementation.HolonType"
     },
     {
-      "key": "MAP Commands Schema-v0.1.0",
+      "key": "MAP Agent Spaces Schema-v0.1.4",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Core Schema-v0.0.7",
+      "key": "MAP Commands Schema-v0.1.4",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP DAHN Schema-v0.1.0",
+      "key": "MAP Core Schema-v0.0.11",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Dance Schema-v0.1.0",
+      "key": "MAP DAHN Schema-v0.1.4",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Dancer Schema-v0.1.0",
+      "key": "MAP Dance Schema-v0.1.4",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Descriptor Runtime Schema-v0.1.0",
+      "key": "MAP Dancer Schema-v0.1.4",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Design Tokens Schema-v0.1.0",
+      "key": "MAP Descriptor Runtime Schema-v0.1.4",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Meta Design System Schema-v0.1.0",
+      "key": "MAP Design Tokens Schema-v0.1.4",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Query Dance Adapter Schema-v0.1.0",
+      "key": "MAP Meta Design System Schema-v0.1.4",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Query Schema-v0.0.2",
+      "key": "MAP Query Dance Adapter Schema-v0.1.4",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Theme Schema-v0.1.0",
+      "key": "MAP Query Schema-v0.0.6",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Validation Schema-v0.1.0",
+      "key": "MAP Theme Schema-v0.1.4",
+      "type": "Schema.HolonType"
+    },
+    {
+      "key": "MAP Validation Schema-v0.1.4",
       "type": "Schema.HolonType"
     },
     {
@@ -3614,6 +4138,10 @@
     {
       "key": "MapBytesValueType.BytesValueType",
       "type": "MetaBytesValueType.MetaValueType"
+    },
+    {
+      "key": "MapEnumPropertyValueDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType"
     },
     {
       "key": "MapEnumValueType.EnumValueType",
@@ -3770,6 +4298,10 @@
     {
       "key": "MetaVisualizerType.MetaHolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MiddleName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
       "key": "Minimum.PropertyType",
@@ -3948,6 +4480,14 @@
       "type": "VisualizerImplementation.HolonType"
     },
     {
+      "key": "PersonAgent.BioSocialAgent",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "PersonAgentName.FormatRule",
+      "type": "FormatRule.KeyRuleType"
+    },
+    {
       "key": "PreparedSchema.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
@@ -4026,6 +4566,10 @@
     {
       "key": "PropertyColumnGap.DesignToken",
       "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "PropertyLabelDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType"
     },
     {
       "key": "PropertyMapVisualizer.HolonType",
@@ -4256,6 +4800,18 @@
       "type": "PropertyValidationRule.HolonType"
     },
     {
+      "key": "ResolveComposition.DanceType",
+      "type": "MetaDanceType.MetaHolonType"
+    },
+    {
+      "key": "ResolveCompositionRequest.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "ResolveCompositionResponse.DanceResponseType",
+      "type": "MetaDanceResponseType.MetaHolonType"
+    },
+    {
       "key": "ResolveVisualizerUsage.DanceType",
       "type": "MetaDanceType.MetaHolonType"
     },
@@ -4266,6 +4822,10 @@
     {
       "key": "ResolveVisualizerUsageResponse.DanceResponseType",
       "type": "MetaDanceResponseType.MetaHolonType"
+    },
+    {
+      "key": "ResolvedComposition.Projection",
+      "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
       "key": "ResponseBodyType.HolonType",
@@ -4450,6 +5010,10 @@
     {
       "key": "StringLengthConstraint.ConstraintType",
       "type": "MetaConstraintType.MetaHolonType"
+    },
+    {
+      "key": "StringPropertyValueDefault.VisualizerSlotDefault",
+      "type": "VisualizerSlotDefault.HolonType"
     },
     {
       "key": "StringValidationRule.HolonType",
@@ -4816,6 +5380,54 @@
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
+      "key": "VisualizerKind.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType"
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.Action",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.ActionBar",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.Canvas",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.Collection",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.Node",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.PropertyMap",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.RootedNavigation",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.Structure",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.TitleBar",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "VisualizerKind.MapEnumValueType.Value",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "VisualizerKind.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
       "key": "VisualizerModuleFormat.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
@@ -4824,7 +5436,15 @@
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
+      "key": "VisualizerPreference.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
       "key": "VisualizerSlot.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "VisualizerSlotDefault.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {

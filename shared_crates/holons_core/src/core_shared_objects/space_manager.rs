@@ -14,6 +14,8 @@ use std::fmt::{Debug, Formatter};
 pub struct HolonSpaceManager {
     session: RwLock<Arc<super::space_session::SpaceSession>>,
     descriptor_registry: RwLock<Weak<EffectiveHolonDescriptorRegistry>>,
+    visualizer_evaluations:
+        RwLock<Weak<crate::dahn::evaluation_registry::VisualizerEvaluationRegistry>>,
     /// Manages cache access for retrieving both local and external holons efficiently.
     cache_request_router: Arc<dyn HolonCacheAccess + Send + Sync>,
 
@@ -67,6 +69,7 @@ impl HolonSpaceManager {
             Self {
                 session: RwLock::new(Arc::default()),
                 descriptor_registry: RwLock::new(Weak::new()),
+                visualizer_evaluations: RwLock::new(Weak::new()),
                 cache_request_router,
                 dance_initiator,
                 holon_service,
@@ -102,6 +105,9 @@ impl HolonSpaceManager {
         if let Some(registry) = self.descriptor_registry() {
             registry.reset_session()?;
         }
+        if let Some(registry) = self.visualizer_evaluations() {
+            registry.evict_projections()?;
+        }
         *current = Arc::default();
         Ok(())
     }
@@ -121,6 +127,24 @@ impl HolonSpaceManager {
     /// Returns the registry participant associated with this runtime space proxy.
     pub fn descriptor_registry(&self) -> Option<Arc<EffectiveHolonDescriptorRegistry>> {
         self.descriptor_registry.read().ok()?.upgrade()
+    }
+
+    /// Associates the separately owned Visualizer evaluation participant.
+    pub fn attach_visualizer_evaluations(
+        &self,
+        registry: &Arc<crate::dahn::evaluation_registry::VisualizerEvaluationRegistry>,
+    ) {
+        let mut current =
+            self.visualizer_evaluations.write().expect("evaluation registry lock poisoned");
+        assert!(current.upgrade().is_none(), "Evaluation registry already attached");
+        *current = Arc::downgrade(registry);
+    }
+
+    /// Established choices survive descriptor Session retirement.
+    pub fn visualizer_evaluations(
+        &self,
+    ) -> Option<Arc<crate::dahn::evaluation_registry::VisualizerEvaluationRegistry>> {
+        self.visualizer_evaluations.read().ok()?.upgrade()
     }
 
     /// Provides access to the per-space transaction manager.

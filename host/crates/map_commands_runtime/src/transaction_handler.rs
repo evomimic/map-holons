@@ -22,7 +22,17 @@ pub async fn handle_transaction(
             let expected = context
                 .get_space_holon()?
                 .ok_or_else(|| HolonError::InvalidState("No persisted HolonSpace".into()))?;
-            if space.holon_id()? != expected.holon_id()? {
+            let root = holons_core::SmartReference::new_from_id(
+                context.space_read_handle(),
+                space.holon_id()?,
+            )
+            .lineage_root_id()?;
+            let expected_root = holons_core::SmartReference::new_from_id(
+                context.space_read_handle(),
+                expected.holon_id()?,
+            )
+            .lineage_root_id()?;
+            if root != expected_root {
                 return Err(HolonError::InvalidParameter(
                     "Captured HolonSpace does not match the loader transaction".into(),
                 ));
@@ -95,6 +105,56 @@ pub async fn handle_transaction(
                     Err(error)
                 }
             }
+        }
+        TransactionAction::RememberVisualizerPreference {
+            subject_type,
+            slot,
+            visualizer,
+            usage,
+        } => {
+            let reference = holons_core::dahn::preferences::remember(
+                context,
+                subject_type,
+                slot,
+                visualizer,
+                usage,
+            )?;
+            session.usage_transactions.invalidate_bindings()?;
+            Ok(MapResult::Reference(reference))
+        }
+        TransactionAction::ConvertVisualizerSlotPreference { preference } => {
+            let reference =
+                holons_core::dahn::preferences::convert_slot_preference(context, &preference)?;
+            session.usage_transactions.invalidate_bindings()?;
+            Ok(MapResult::Reference(reference))
+        }
+        TransactionAction::ReconsiderComposition { request } => {
+            context
+                .visualizer_evaluations()
+                .ok_or_else(|| {
+                    HolonError::ServiceNotAvailable("Visualizer evaluation registry".into())
+                })?
+                .reconsider(&request)?;
+            let body = context.resolve_composition(request)?;
+            Ok(MapResult::ResolvedComposition(
+                holons_core::dahn::composition::ResolvedComposition::from_projection(&body)?,
+            ))
+        }
+        TransactionAction::ResolveComposition { request } => {
+            // A retained Rust result already has the semantic shape Commands projects.
+            // Avoid manufacturing a transient carrier (and reading keys for its index)
+            // solely to decode that carrier back into the same result.
+            if let Some(registry) = context.visualizer_evaluations() {
+                let revision = registry.revision()?;
+                if let Some(result) = registry.acquire(context, &request)? {
+                    registry.check_revision(revision)?;
+                    return Ok(MapResult::ResolvedComposition(result));
+                }
+            }
+            let body = context.resolve_composition(request)?;
+            Ok(MapResult::ResolvedComposition(
+                holons_core::dahn::composition::ResolvedComposition::from_projection(&body)?,
+            ))
         }
         TransactionAction::LoadTheme { theme } => {
             let body = context.load_theme(&theme)?;

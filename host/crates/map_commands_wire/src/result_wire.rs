@@ -40,6 +40,7 @@ pub enum MapResultWire {
 
     VisualizerSelection(VisualizerSelectionWire),
     LoadedTheme(LoadedThemeWire),
+    ResolvedComposition(ResolvedCompositionWire),
     VisualizerDiscovery(VisualizerDiscoveryWire),
     VisualizerUsageSelection(VisualizerUsageSelectionWire),
     VisualizerUsagePersistence(VisualizerUsagePersistenceWire),
@@ -97,6 +98,11 @@ pub struct LoadedThemeWire {
     pub data: holons_core::dances::ThemeData,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ResolvedCompositionWire {
+    pub references: Vec<HolonReferenceWire>,
+    pub data: holons_core::dahn::composition::CompositionData,
+}
 impl From<MapResult> for MapResultWire {
     fn from(result: MapResult) -> Self {
         match result {
@@ -107,6 +113,12 @@ impl From<MapResult> for MapResultWire {
                 })
             }
             MapResult::ValidationFindings(findings) => MapResultWire::ValidationFindings(findings),
+            MapResult::ResolvedComposition(resolved) => {
+                MapResultWire::ResolvedComposition(ResolvedCompositionWire {
+                    references: resolved.references.iter().map(HolonReferenceWire::from).collect(),
+                    data: resolved.data,
+                })
+            }
             MapResult::LoadedTheme(loaded) => MapResultWire::LoadedTheme(LoadedThemeWire {
                 theme: (&loaded.theme).into(),
                 meta_design_system: (&loaded.meta_design_system).into(),

@@ -1,10 +1,10 @@
 {
   "holons": [
     {
-      "key": "MAP Dancer Schema-v0.1.0",
+      "key": "MAP Dancer Schema-v0.1.4",
       "type": "Schema.HolonType",
       "properties": {
-        "SchemaName": "MAP Dancer Schema-v0.1.0",
+        "SchemaName": "MAP Dancer Schema-v0.1.4",
         "Description": "Generic MAP semantics for Dancers, their offered Dances, declared semantic dependencies, and the descriptor-driven activation affordance. Concrete Dancers and House Troupe packaging remain outside this package."
       },
       "relationships": [
@@ -12,13 +12,13 @@
           "name": "DependsOn",
           "target": [
             {
-              "$ref": "MAP Core Schema-v0.0.7"
+              "$ref": "MAP Core Schema-v0.0.11"
             },
             {
-              "$ref": "MAP Dance Schema-v0.1.0"
+              "$ref": "MAP Dance Schema-v0.1.4"
             },
             {
-              "$ref": "MAP DAHN Schema-v0.1.0"
+              "$ref": "MAP DAHN Schema-v0.1.4"
             }
           ]
         }
@@ -47,7 +47,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dancer Schema-v0.1.0"
+              "$ref": "MAP Dancer Schema-v0.1.4"
             }
           ]
         },
@@ -95,7 +95,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dancer Schema-v0.1.0"
+              "$ref": "MAP Dancer Schema-v0.1.4"
             }
           ]
         },
@@ -157,7 +157,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dancer Schema-v0.1.0"
+              "$ref": "MAP Dancer Schema-v0.1.4"
             }
           ]
         },
@@ -211,7 +211,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dancer Schema-v0.1.0"
+              "$ref": "MAP Dancer Schema-v0.1.4"
             }
           ]
         },
@@ -273,7 +273,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dancer Schema-v0.1.0"
+              "$ref": "MAP Dancer Schema-v0.1.4"
             }
           ]
         },
@@ -326,7 +326,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dancer Schema-v0.1.0"
+              "$ref": "MAP Dancer Schema-v0.1.4"
             }
           ]
         }
@@ -355,7 +355,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dancer Schema-v0.1.0"
+              "$ref": "MAP Dancer Schema-v0.1.4"
             }
           ]
         },
@@ -394,7 +394,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dancer Schema-v0.1.0"
+              "$ref": "MAP Dancer Schema-v0.1.4"
             }
           ]
         },
@@ -480,7 +480,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dancer Schema-v0.1.0"
+              "$ref": "MAP Dancer Schema-v0.1.4"
             }
           ]
         },
@@ -519,7 +519,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dancer Schema-v0.1.0"
+              "$ref": "MAP Dancer Schema-v0.1.4"
             }
           ]
         },
@@ -581,7 +581,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dancer Schema-v0.1.0"
+              "$ref": "MAP Dancer Schema-v0.1.4"
             }
           ]
         },
@@ -636,7 +636,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dancer Schema-v0.1.0"
+              "$ref": "MAP Dancer Schema-v0.1.4"
             }
           ]
         },
@@ -698,7 +698,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dancer Schema-v0.1.0"
+              "$ref": "MAP Dancer Schema-v0.1.4"
             }
           ]
         },

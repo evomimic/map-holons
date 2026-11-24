@@ -12,3 +12,5 @@ pub mod space_imports;
 pub mod window_setup;
 
 pub use app_builder::AppBuilder;
+
+mod welcome;

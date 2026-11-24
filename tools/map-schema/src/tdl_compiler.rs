@@ -2213,7 +2213,7 @@ holon Example.HolonType {
     #[test]
     fn core_schema_check_accepts_tdl_v09_corpus() -> Result<()> {
         let fixture_root = fixture_dir();
-        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 25);
+        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 29);
 
         let diagnostics = check_inputs(&[fixture_root])?;
 
@@ -2235,8 +2235,8 @@ holon Example.HolonType {
         let parsed = parse_inputs(&[fixture_root.clone()])?;
         let compilation = build_r6_compilation(parsed)?;
 
-        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 25);
-        assert_eq!(compilation.files.len(), 25);
+        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 29);
+        assert_eq!(compilation.files.len(), 29);
         assert!(compilation
             .files
             .iter()
@@ -2251,12 +2251,12 @@ holon Example.HolonType {
         let out_dir = temp_out_dir();
         let compiled_files = compile_inputs(&[fixture_root.clone()], &out_dir)?;
 
-        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 25);
-        assert_eq!(compiled_files.len(), 25);
+        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 29);
+        assert_eq!(compiled_files.len(), 29);
 
         let root_json = fs::read_to_string(out_dir.join("core/root.json"))?;
         assert!(root_json.contains(r#""TypeName""#));
-        assert!(root_json.contains(r#""$ref": "MAP Core Schema-v0.0.7""#));
+        assert!(root_json.contains(r#""$ref": "MAP Core Schema-v0.0.11""#));
         assert!(!root_json.contains(r#""type_name""#));
         assert!(!root_json.contains(r#""InstanceTypeKind""#));
         assert!(root_json.contains(r#""meta""#));
@@ -2273,7 +2273,7 @@ holon Example.HolonType {
             out_dir.join("descriptor-runtime/schema.json"),
         )?)?;
         let holons = document["holons"].as_array().context("Descriptor Runtime holons")?;
-        let runtime_key = "MAP Descriptor Runtime Schema-v0.1.0";
+        let runtime_key = "MAP Descriptor Runtime Schema-v0.1.4";
         let find = |key: &str| holons.iter().find(|holon| holon["key"] == key).unwrap();
         let targets = |holon: &Value, name: &str| -> Vec<String> {
             holon["relationships"]
@@ -2287,7 +2287,7 @@ holon Example.HolonType {
         };
         assert_eq!(
             targets(find(runtime_key), "DependsOn"),
-            vec!["MAP Core Schema-v0.0.7", "MAP Dance Schema-v0.1.0", "MAP Commands Schema-v0.1.0"]
+            vec!["MAP Core Schema-v0.0.11", "MAP Dance Schema-v0.1.4", "MAP Commands Schema-v0.1.4"]
         );
         let contract = targets(find("EffectiveHolonDescriptor.HolonType"), "InstanceRelationships");
         for name in [
@@ -2470,7 +2470,7 @@ holon Example.HolonType {
             ["HolonInspector.VisualizerControlsSlot", "LoadHolonsResult.VisualizerControlsSlot"]
         {
             let slot = holons.iter().find(|holon| holon["key"] == key).context("controls Slot")?;
-            assert_eq!(slot["properties"]["CompositionSubject"], "subject");
+            assert_eq!(slot["properties"]["CompositionSubject"], "OwnerSubject");
         }
         let actions = holons
             .iter()
@@ -2723,7 +2723,7 @@ holon Example.HolonType {
             let value: Value = serde_json::from_str(&fs::read_to_string(&path)?)?;
             let has_map_core_schema = value["holons"]
                 .as_array()
-                .map(|holons| holons.iter().any(|holon| holon["key"] == "MAP Core Schema-v0.0.7"))
+                .map(|holons| holons.iter().any(|holon| holon["key"] == "MAP Core Schema-v0.0.11"))
                 .unwrap_or(false);
             if has_map_core_schema {
                 map_core_schema_files.push(path);
@@ -2810,7 +2810,7 @@ holon Example.HolonType {
             );
             assert_eq!(
                 targets(descriptor, "ComponentOf"),
-                serde_json::json!([{ "$ref": "MAP Core Schema-v0.0.7" }])
+                serde_json::json!([{ "$ref": "MAP Core Schema-v0.0.11" }])
             );
         }
         assert_eq!(declared["properties"]["DeletionSemantic"], "Allow");
@@ -2930,7 +2930,7 @@ holon Example.HolonType {
         assert!(exactly_one["relationships"].as_array().is_some_and(|relationships| {
             relationships.iter().any(|relationship| {
                 relationship["name"] == "RuleOf"
-                    && relationship["target"] == json!([{ "$ref": "MAP Core Schema-v0.0.7" }])
+                    && relationship["target"] == json!([{ "$ref": "MAP Core Schema-v0.0.11" }])
             })
         }));
         let applicability = root_holons
@@ -2972,7 +2972,7 @@ holon Example.HolonType {
         assert!(format_rule["relationships"].as_array().is_some_and(|relationships| {
             relationships.iter().any(|relationship| {
                 relationship["name"] == "RuleOf"
-                    && relationship["target"] == json!([{ "$ref": "MAP Dance Schema-v0.1.0" }])
+                    && relationship["target"] == json!([{ "$ref": "MAP Dance Schema-v0.1.4" }])
             })
         }));
 

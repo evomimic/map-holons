@@ -54,6 +54,9 @@ pub async fn guest_usage_resolution_preserves_affordance_inheritance_scope_and_r
     usage.with_descriptor(saved(&context, "VisualizerUsage.HolonType")).unwrap();
     usage.add_related_holons("UsesVisualizer", vec![visualizer.clone()]).unwrap();
     usage.add_related_holons("ForSubjectType", vec![default_type]).unwrap();
+    let agent =
+        holons_core::dahn::PersonalPreferences::for_context(&context).unwrap().agent.unwrap();
+    usage.add_related_holons("UsageForAgent", vec![agent]).unwrap();
     let staged = context.mutation().stage_new_holon(usage).unwrap();
     command(runtime, &context, TransactionAction::Commit).await;
     assert!(!context.is_open());

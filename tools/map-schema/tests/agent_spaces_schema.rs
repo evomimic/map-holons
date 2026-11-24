@@ -27,8 +27,8 @@ fn agent_contract_compiles_without_core_or_dancer_changes() -> Result<()> {
     let document: Value = serde_json::from_str(&compile_input_string(SOURCE, "schema.tdl")?)?;
     assert_eq!(document, serde_json::from_str::<Value>(GENERATED)?);
     assert_eq!(
-        targets(holon(&document, "MAP Agent Spaces Schema-v0.1.0"), "DependsOn"),
-        ["MAP Core Schema-v0.0.7"]
+        targets(holon(&document, "MAP Agent Spaces Schema-v0.1.4"), "DependsOn"),
+        ["MAP Core Schema-v0.0.11"]
     );
     for (key, parent, abstract_type) in [
         ("Agent.HolonType", "HolonType.TypeDescriptor", true),
@@ -52,14 +52,14 @@ fn agent_contract_compiles_without_core_or_dancer_changes() -> Result<()> {
     }
     let person = holon(&document, "PersonAgent.BioSocialAgent");
     assert_eq!(targets(person, "InstanceProperties").len(), 3);
-    assert_eq!(targets(person, "InstanceKeyRule"), ["NoneRule.KeyRuleType"]);
+    assert_eq!(targets(person, "InstanceKeyRule"), ["PersonAgentName.FormatRule"]);
     let rule = holon(&document, "PersonAgentName.FormatRule");
     assert_eq!(rule["properties"]["TemplateString"], "{0}.[1].[2]");
     assert_eq!(
         targets(rule, "TemplateParameters"),
         ["LastName.PropertyType", "FirstName.PropertyType", "MiddleName.PropertyType"]
     );
-    assert_eq!(targets(rule, "RuleOf"), ["MAP Agent Spaces Schema-v0.1.0"]);
+    assert_eq!(targets(rule, "RuleOf"), ["MAP Agent Spaces Schema-v0.1.4"]);
     Ok(())
 }
 
@@ -101,10 +101,20 @@ fn configured_agent_schema_is_bundled_and_precedes_its_consumers() -> Result<()>
     let resources = repository.join("host/conductora/resources");
     let config: Value = serde_json::from_slice(&fs::read(resources.join("space-imports.json"))?)?;
     let imports = config["imports"].as_array().unwrap();
-    assert_eq!(imports[0], "schema-packages/agent-spaces/imports/schema.json");
+    let manifest: Value = serde_json::from_slice(&fs::read(
+        repository.join("schema-src/core-schema-bootstrap-manifest.json"),
+    )?)?;
+    let packages = manifest["packages"].as_array().unwrap();
+    let agent = packages.iter().position(|p| p["name"] == "agent-spaces").unwrap();
+    let dahn = packages.iter().position(|p| p["name"] == "dahn").unwrap();
+    assert!(agent < dahn);
+    assert!(!imports.iter().any(|p| p == "schema-packages/agent-spaces/imports/schema.json"));
     for import in imports {
         assert!(resources.join(import.as_str().unwrap()).is_file());
     }
-    assert_eq!(GENERATED, fs::read_to_string(resources.join(imports[0].as_str().unwrap()))?);
+    assert_eq!(
+        GENERATED,
+        fs::read_to_string(resources.join("schema-packages/agent-spaces/imports/schema.json"))?
+    );
     Ok(())
 }

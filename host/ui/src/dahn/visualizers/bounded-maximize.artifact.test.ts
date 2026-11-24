@@ -75,6 +75,53 @@ it('occurrence attention retains the same participant and local view without cha
   expect(second.node.contains(second.collection)).toBe(true);
 });
 
+it('expands the real Inspector into fractional viewport and border geometry using whole-pixel participation', async () => {
+  const { path, second } = await navigation();
+  const region = path.regions.get('b');
+  region.style.border = '0.8px solid';
+  path.viewportWidth = 1430.5; path.viewportHeight = 805.75;
+  const before = second.node.getNodeInspectorAllocation();
+  const insets = path.regionInsets('b');
+  const expected = { width: Math.floor(path.viewportWidth - insets.width), height: Math.floor(path.viewportHeight - insets.height) };
+  expect(second.node.requestOccurrence('maximize').status).toBe('applied');
+  const allocation = second.node.getNodeInspectorAllocation();
+  expect(allocation).toEqual(expected);
+  expect(allocation.width).toBeGreaterThan(before.width);
+  expect(second.node.occurrenceMaximized).toBe(true);
+  expect(region.dataset.contractViolation).toBeUndefined();
+  expect(parseFloat(region.style.width)).toBeCloseTo(allocation.width + insets.width);
+  expect(parseFloat(region.style.height)).toBeCloseTo(allocation.height + insets.height);
+  expect(second.node.requestOccurrence('restore').status).toBe('applied');
+  expect(second.node.occurrenceMaximized).toBe(false);
+  expect(region.dataset.contractViolation).toBeUndefined();
+});
+
+it('refuses expansion before changing the frame when the real receiver rejects it, then offers working recovery', async () => {
+  const { path, first, second } = await navigation();
+  const region = path.regions.get('b');
+  const before = second.node.getNodeInspectorAllocation();
+  const receive = vi.spyOn(second.node, 'applyNodePresentation').mockImplementation(() => { throw new Error('Receiver unavailable'); });
+  const choose = vi.fn(); path.occurrences.find((item: any) => item.id === 'b').inspectVisualizer = choose;
+  expect(second.node.requestOccurrence('maximize').status).toBe('refused');
+  expect(path.attention).toBeUndefined();
+  expect(region.style.position).toBe('relative');
+  expect(second.node.getNodeInspectorAllocation()).toEqual(before);
+  expect(second.node.occurrenceMaximized).toBe(false);
+  expect(path.regions.get('a').inert).toBe(false);
+  const status = region.querySelector('[data-path-occurrence-status]');
+  const buttons = [...status.querySelectorAll('button')] as HTMLButtonElement[];
+  expect(buttons.map(button => button.textContent)).toEqual(['Retry presentation', 'Choose Visualizer']);
+  expect(buttons.every(button => button.style.cursor === 'pointer' && !button.disabled)).toBe(true);
+  buttons[1].click(); expect(choose).toHaveBeenCalledWith(buttons[1]);
+  receive.mockRestore();
+  buttons[0].click();
+  expect(region.dataset.contractViolation).toBeUndefined();
+  expect(status.hidden).toBe(true);
+  expect(status.textContent).not.toContain('Receiver unavailable');
+  expect(second.node.requestOccurrence('maximize').status).toBe('applied');
+  expect(first.node.occurrenceMaximized).toBe(false);
+});
+
 it('routes Canvas attention through the selected owner and context requests upward with explicit grant, restore and refusal', async () => {
   const { path, second } = await navigation();
   const container = document.createElement('div');

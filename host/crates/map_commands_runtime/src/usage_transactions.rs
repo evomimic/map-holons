@@ -2,9 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use core_types::{HolonError, HolonId};
-use dahn_selection::usage::{
-    anchor, initialize_live_usage, instances, record_key, single, VisualizerUsage,
-};
+use dahn_selection::usage::{initialize_live_usage, record_key, single, VisualizerUsage};
 use holons_core::core_shared_objects::transient_holon_manager::ToHolonCloneModel;
 use holons_core::core_shared_objects::{
     holon::HolonCloneModel,
@@ -338,18 +336,15 @@ impl UsageTransactions {
         let started = std::time::Instant::now();
         let prepare_usage = self.active.lock().map_err(lock_error)?.contains_key(&caller.tx_id());
         let generation = self.bindings.generation()?;
+        // Only explicit, successfully published local choices establish these bindings.
+        // Default selection never retains or initializes a Usage.
         if prepare_usage {
             if let Some(binding) = self.bindings.get(caller.tx_id(), &request)? {
-                // Availability is a cheap host catalog/file check; retained metadata
-                // never permits executing an implementation that disappeared.
                 let identity_unchanged = single(&binding.usage.usage, "UsesVisualizer")?
                     == binding.selected
                     && single(&binding.usage.usage, "ForSubjectType")? == binding.usage_descriptor
                     && single(&binding.usage.usage, "DescribedBy")? == binding.usage_type;
-                if identity_unchanged
-                    && caller.visualizer_artifact_available(&binding.selected)?
-                    && self.bindings.is_current(generation)?
-                {
+                if identity_unchanged && self.bindings.is_current(generation)? {
                     let usage =
                         VisualizerUsageSelection { initialized: false, ..binding.usage.clone() };
                     self.prepare(
@@ -359,9 +354,6 @@ impl UsageTransactions {
                         binding.descriptor,
                         &usage,
                     )?;
-                    if std::env::var_os("MAP_PROFILE").is_some() {
-                        eprintln!("[MAP-PROFILE] command=select_visualizer binding_reused=true total_ms={:.3}", started.elapsed().as_secs_f64() * 1000.0);
-                    }
                     return Ok(map_commands_contract::VisualizerSelection {
                         selected: binding.selected,
                         requested_kind: request.requested_kind,
@@ -388,7 +380,7 @@ impl UsageTransactions {
             None
         };
         let mut metadata_hits = 0;
-        let (mut selection, descriptor) = if let Some(metadata) = metadata {
+        let (selection, _descriptor) = if let Some(metadata) = metadata {
             let mut metadata = metadata.lock().map_err(lock_error)?;
             let before = metadata.hits();
             let selection = dahn_selection::select_visualizer_with_metadata(
@@ -403,28 +395,6 @@ impl UsageTransactions {
         };
         let selection_ms = started.elapsed().as_secs_f64() * 1000.0;
         let usage_started = std::time::Instant::now();
-        if prepare_usage {
-            let usage = self.select_prevalidated(
-                caller,
-                request.clone(),
-                selection.selected.clone(),
-                descriptor.clone(),
-            )?;
-            self.bindings.retain(
-                caller.tx_id(),
-                generation,
-                PreparedVisualizerBinding {
-                    request,
-                    selected: selection.selected.clone(),
-                    descriptor,
-                    usage_descriptor: single(&usage.usage, "ForSubjectType")?,
-                    usage: usage.clone(),
-                    usage_type: single(&usage.usage, "DescribedBy")?,
-                    alternatives_available: selection.alternatives_available,
-                },
-            )?;
-            selection.usage = Some(usage);
-        }
         if std::env::var_os("MAP_PROFILE").is_some() {
             eprintln!("[MAP-PROFILE] command=select_visualizer selection_ms={:.3} usage_ms={:.3} usage_prepared={} binding_reused=false metadata_hits={}",
                 selection_ms, usage_started.elapsed().as_secs_f64() * 1000.0, prepare_usage, metadata_hits);
@@ -1222,60 +1192,15 @@ impl BatchSave {
                 continue;
             }
             let scope = (slot.holon_id()?, descriptor.holon_id()?);
-            if let Some(preference) = self.staged_preferences.get_mut(&scope) {
-                let previous = dahn_selection::usage::related(preference, "PreferredUsage")?;
-                if previous != vec![reference.clone()] {
-                    if !previous.is_empty() {
-                        preference.remove_related_holons("PreferredUsage", previous)?;
-                    }
-                    preference.add_related_holons("PreferredUsage", vec![reference.clone()])?;
-                }
-                continue;
-            }
-            let preferences = instances(context, "VisualizerSlotPreference.HolonType")?
-                .into_iter()
-                .filter_map(|p| {
-                    match (single(&p, "PreferenceForSlot"), single(&p, "PreferenceForSubjectType"))
-                    {
-                        (Ok(s), Ok(d)) if s == slot && d == descriptor => Some(Ok(p)),
-                        (Err(e), _) | (_, Err(e)) => Some(Err(e)),
-                        _ => None,
-                    }
-                })
-                .collect::<Result<Vec<_>, HolonError>>()?;
-            match preferences.as_slice() {
-                [] => {
-                    let mut preference = context.mutation().new_holon(Some(record_key(
-                        "slot-preference",
-                        &slot,
-                        &descriptor,
-                    )?))?;
-                    preference.add_related_holons(
-                        "DescribedBy",
-                        vec![anchor(context, "VisualizerSlotPreference.HolonType")?],
-                    )?;
-                    preference.add_related_holons("PreferenceForSlot", vec![slot])?;
-                    preference.add_related_holons("PreferenceForSubjectType", vec![descriptor])?;
-                    preference.add_related_holons("PreferredUsage", vec![reference.clone()])?;
-                    let staged = context.mutation().stage_new_holon(preference)?;
-                    self.staged_preferences.insert(scope, staged.into());
-                }
-                [preference] => {
-                    let old = single(preference, "PreferredUsage")?;
-                    if old != *reference {
-                        let mut staged =
-                            context.mutation().stage_new_version_from_id(preference.holon_id()?)?;
-                        self.staged_preferences.insert(scope.clone(), staged.clone().into());
-                        staged.remove_related_holons("PreferredUsage", vec![old])?;
-                        staged.add_related_holons("PreferredUsage", vec![reference.clone()])?;
-                    }
-                }
-                _ => {
-                    return Err(HolonError::InvalidState(
-                        "Multiple remembered preferences for slot and subject descriptor".into(),
-                    ))
-                }
-            }
+            let visualizer = single(reference, "UsesVisualizer")?;
+            let preference = holons_core::dahn::preferences::remember(
+                context,
+                descriptor,
+                Some(slot),
+                visualizer,
+                Some(reference.clone()),
+            )?;
+            self.staged_preferences.insert(scope, preference);
         }
         Ok(())
     }

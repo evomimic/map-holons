@@ -1,0 +1,1491 @@
+#![deny(missing_docs)]
+//! Kitsune2 transport implementation backed by iroh.
+//!
+//! This transport establishes peer-to-peer connections using iroh's QUIC-based networking.
+//! It manages outgoing and incoming connections dynamically, sending and receiving data
+//! as framed messages over persistent uni-directional streams.
+//!
+//! Each message is framed with a header that specifies the frame type (preflight or data) and
+//! the data length, leading to ordered and bounded message delivery. The peer URL is sent
+//! as part of the preflight to inform the remote about it and make it available to respond to
+//! on the transport level. Since there is no discovery service present in the kitsune2
+//! architecture, the remote URL must be sent with the preflight.
+//! Incoming streams are accepted and handled asynchronously per connection. There is one
+//! stream open per direction, over which all frames are sent.
+//!
+//! # Per-space configuration
+//!
+//! Each space can override transport settings by passing an
+//! [`IrohTransportModConfig`] in the per-space config given to
+//! [`Kitsune::space()`](kitsune2_api::Kitsune::space).
+//! The same [`IrohTransportConfig`] type is used for both global and
+//! per-space configuration.
+//!
+//! The fields relevant for per-space overrides are:
+//!
+//! - **`relay_url`**: A relay server URL specific to this space. The
+//!   transport dynamically adds it via
+//!   [`configure_for_space`](kitsune2_api::TxImp::configure_for_space) and
+//!   delivers the resulting per-space URL through
+//!   [`new_listening_address`](kitsune2_api::TxImpHnd::new_listening_address).
+//! - **`relay_allow_plain_text`**: Must be set to `true` if `relay_url`
+//!   uses `http://` instead of `https://`.
+//! - **`auth_material_relay_base64`**: Base64-encoded auth material for
+//!   relay registration. When set, the endpoint's public key is registered
+//!   with the relay before connecting.
+//!
+//! Other fields (`max_frame_bytes`, `connect_timeout_s`) are endpoint-wide
+//! and are ignored in per-space overrides.
+//!
+//! # Architecture
+//!
+//! Complete trait abstraction of all I/O operations, enabling full testability without network dependencies.
+//!
+//! ```text
+//!        Traits                   Implementations
+//!
+//!     ┌──────────┐               ┌──────────────┐
+//!     │ Endpoint │               │ IrohEndpoint │
+//!     └────┬─────┘               └──────┬───────┘
+//!          │                            │
+//!          ▼                            ▼
+//!    ┌────────────┐             ┌────────────────┐
+//!    │ Connection │             │ IrohConnection │
+//!    └─────┬──────┘             └───────┬────────┘
+//!          │                            │
+//!     ┌────┴────┐                  ┌────┴────┐
+//!     ▼         ▼                  ▼         ▼
+//! ┌────────┐ ┌────────┐   ┌────────────┐ ┌────────────┐
+//! │  Send  │ │  Recv  │   │  IrohSend  │ │  IrohRecv  │
+//! │ Stream │ │ Stream │   │   Stream   │ │   Stream   │
+//! └────────┘ └────────┘   └────────────┘ └────────────┘
+//! ```
+//!
+//! # IrohTransport task management
+//!
+//! ```text
+//!                       ┌───────────────┐
+//!                       │ IrohTransport │
+//!                       └───────┬───────┘
+//!                               │
+//!               ┌───────────────┴───────────────┐
+//!               │                               │
+//!               ▼                               ▼
+//!     ┌─────────────────┐             ┌─────────────────┐
+//!     │ watch_addr_task │             │   accept_task   │
+//!     └────────┬────────┘             └───┬─────────┬───┘
+//!              │                          │         │
+//!              │ monitors                 │         └──────────┬──────────┐
+//!              ▼                          │ accepts            │          │
+//!     ┌─────────────────┐                 ▼                    ▼          ▼
+//!     │  Relay Address  │          ┌────────────┐       ┌──────────┐┌──────────┐┌──────────┐
+//!     │    Changes      │          │  Incoming  │       │ conn_    ││ conn_    ││ conn_    │
+//!     └─────────────────┘          │ Connections│       │ reader 1 ││ reader 2 ││ reader N │
+//!                                  └────────────┘       └────┬─────┘└────┬─────┘└────┬─────┘
+//!                                                            │           │           │
+//!                                                            │ reads     │ reads     │ reads
+//!                                                            ▼           ▼           ▼
+//!                                                      ┌─────────┐ ┌─────────┐ ┌─────────┐
+//!                                                      │ Peer 1  │ │ Peer 2  │ │ Peer N  │
+//!                                                      │ Frames  │ │ Frames  │ │ Frames  │
+//!                                                      └─────────┘ └─────────┘ └─────────┘
+//! ```
+//!
+//! # Connection establishment
+//!
+//! The transport handlers [`TxImp::send`] implementation contains the logic
+//! for connection establishment.
+//!
+//! ```text
+//!                  ┌────────────────┐
+//!                  │ send to peer X │
+//!                  └───────┬────────┘
+//!                          │
+//!                          ▼
+//!                ┌───────────────────┐
+//!                │ Connection exists?│
+//!                └─────────┬─────────┘
+//!                          │
+//!            ┌─────────────┴─────────────┐
+//!            │ Yes                    No │
+//!            ▼                           ▼
+//!   ┌────────────────────┐    ┌─────────────────────────┐
+//!   │ Use existing       │    │ Acquire peer-specific   │
+//!   │ connection         │    │ lock                    │
+//!   └─────────┬──────────┘    └────────────┬────────────┘
+//!             │                            │
+//!             │                            ▼
+//!             │               ┌────────────────────────┐
+//!             │               │ Recheck connection     │
+//!             │               │ after lock             │
+//!             │               └───────────┬────────────┘
+//!             │                           │
+//!             │              ┌────────────┴────────────┐
+//!             │              │ Created by           No │
+//!             │              │ another task            │
+//!             │              ▼                         ▼
+//!             │         ┌────┘          ┌──────────────────────┐
+//!             │         │               │ Create new connection│
+//!             │         │               └──────────┬───────────┘
+//!             │         │                          │
+//!             │         │                          ▼
+//!             │         │               ┌──────────────────┐
+//!             │         │               │ Send preflight   │
+//!             │         │               └────────┬─────────┘
+//!             │         │                        │
+//!             │         │                        ▼
+//!             │         │               ┌──────────────────┐
+//!             │         │               │ Store in map     │
+//!             │         │               └────────┬─────────┘
+//!             │         │                        │
+//!             ▼         ▼                        │
+//!   ┌────────────────────┐◄──────────────────────┘
+//!   │ Use existing       │
+//!   │ connection         │
+//!   └─────────┬──────────┘
+//!             │
+//!             ▼
+//!      ┌────────────┐
+//!      │ Send data  │
+//!      └────────────┘
+//! ```
+//!
+//! Every connection starts with a mandatory bidirectional handshake:
+//!
+//! ```text
+//!     Peer A                                       Peer B
+//!        │                                            │
+//!        │         ┌────────────────────────┐         │
+//!        │         │ Connection Established │         │
+//!        │         └────────────────────────┘         │
+//!        │                                            │
+//!        │  Preflight Frame (Type 0)                  │
+//!        │  [URL + Handshake Data]                    │
+//!        │ ──────────────────────────────────────────>│
+//!        │                                            │
+//!        │                          ┌───────────────┐ │
+//!        │                          │  10s timeout  │ │
+//!        │                          │   enforced    │ │
+//!        │                          └───────────────┘ │
+//!        │                                            │
+//!        │                 Return Preflight Frame     │
+//!        │                 [URL + Handshake Data]     │
+//!        │<───────────────────────────────────────────│
+//!        │                                            │
+//!        │          ┌────────────────────┐            │
+//!        │          │ Connection Ready   │            │
+//!        │          └────────────────────┘            │
+//!        │                                            │
+//!        │  Data Frame (Type 1)                       │
+//!        │ ──────────────────────────────────────────>│
+//!        │                                            │
+//!        │                      Data Frame (Type 1)   │
+//!        │<───────────────────────────────────────────│
+//!        │                                            │
+//!     Peer A                                       Peer B
+//!
+//! ```
+//!
+//! # iroh transport frames
+//!
+//! ```text
+//! Preflight Frame (Type 0):
+//! ┌─────┬────────┬─────────┬─────┬───────────┐
+//! │ 0x0 │ Length │ URL Len │ URL │ Preflight │
+//! │ 1 B │  4 B   │   4 B   │ Var │   Data    │
+//! └─────┴────────┴─────────┴─────┴───────────┘
+//!
+//! Data Frame (Type 1):
+//! ┌─────┬────────┬──────┐
+//! │ 0x1 │ Length │ Data │
+//! │ 1 B │  4 B   │ Var  │
+//! └─────┴────────┴──────┘
+//! ```
+
+use crate::endpoint::{DynIrohEndpoint, IrohEndpoint};
+use bytes::Bytes;
+use iroh::endpoint::presets::Minimal;
+use iroh::{
+    Endpoint, EndpointAddr, EndpointId, RelayConfig, RelayMap, RelayMode,
+    RelayUrl,
+};
+use kitsune2_api::*;
+use std::{
+    collections::HashMap,
+    str::FromStr,
+    sync::{Arc, Mutex, RwLock},
+    time::{Duration, Instant, SystemTime},
+};
+use tokio::task::AbortHandle;
+use tracing::{debug, error, info, warn};
+
+mod close_code;
+mod frame;
+use frame::*;
+mod url;
+use url::*;
+mod connection;
+mod connection_context;
+mod connection_registry;
+mod endpoint;
+mod stream;
+use connection_context::*;
+use connection_registry::{ConnectionRegistry, ConnectionResolution};
+#[cfg(feature = "metrics")]
+mod metrics;
+
+#[cfg(any(test, feature = "test-utils"))]
+pub mod test_utils;
+
+#[cfg(test)]
+mod tests;
+
+const ALPN: &[u8] = b"kitsune2/0";
+/// Error message returned when a connection attempt is skipped because the
+/// home relay is not connected.  Exported so integration tests can match it
+/// without depending on a free-form string literal.
+#[cfg(any(test, feature = "test-utils"))]
+pub const RELAY_NOT_CONNECTED_ERR: &str =
+    "relay not connected, skipping to avoid false unresponsive mark";
+#[cfg(not(any(test, feature = "test-utils")))]
+pub(crate) const RELAY_NOT_CONNECTED_ERR: &str =
+    "relay not connected, skipping to avoid false unresponsive mark";
+
+/// IrohTransport configuration types
+pub mod config {
+    /// Configuration for the [`IrohTransportFactory`](super::IrohTransportFactory).
+    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+    #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+    #[serde(rename_all = "camelCase")]
+    pub struct IrohTransportConfig {
+        /// Explicit relay URL to use as home relay. If none is set,
+        /// relays provided by n0 will be used.
+        ///
+        /// Defaults to `None`.
+        #[cfg_attr(feature = "schema", schemars(default))]
+        pub relay_url: Option<String>,
+
+        /// Allow connecting to plaintext (http) relay server
+        /// instead of the default requiring TLS (https).
+        ///
+        /// Default: false.
+        #[cfg_attr(feature = "schema", schemars(default))]
+        pub relay_allow_plain_text: bool,
+
+        /// Allow local gateway discovery and automatic UPnP/PCP/NAT-PMP mapping.
+        /// Defaults to true, preserving upstream transport behavior.
+        #[serde(default = "default_enable_port_mapping")]
+        #[cfg_attr(feature = "schema", schemars(default))]
+        pub enable_port_mapping: bool,
+
+        /// Set the maximum size in bytes for a frame that the transport
+        /// can transmit.
+        ///
+        /// Defaults to 100 MiB.
+        #[cfg_attr(feature = "schema", schemars(default))]
+        pub max_frame_bytes: usize,
+
+        /// The timeout for establishing a connection to a peer.
+        ///
+        /// Defaults to 60 seconds.
+        #[cfg_attr(feature = "schema", schemars(default))]
+        pub connect_timeout_s: u32,
+
+        /// Base64-encoded auth material for relay registration.
+        /// When set alongside `relay_url` in a per-space config override,
+        /// the endpoint's public key is registered with the relay server
+        /// before connecting. Ignored in the global config.
+        ///
+        /// Defaults to `None`.
+        #[serde(default)]
+        #[cfg_attr(feature = "schema", schemars(skip))]
+        pub auth_material_relay_base64: Option<String>,
+
+        /// Interval in seconds of the keepalive that re-registers the
+        /// endpoint public key with an authenticated relay's bootstrap
+        /// server.
+        ///
+        /// The keepalive keeps the server-side relay allowlist entry alive.
+        /// Only used when auth material is configured.
+        ///
+        /// Defaults to 120 seconds, well within the server's default
+        /// 5-minute auth token idle timeout.
+        #[serde(default = "default_relay_keepalive_interval_s")]
+        #[cfg_attr(feature = "schema", schemars(default))]
+        pub relay_keepalive_interval_s: u32,
+    }
+
+    fn default_enable_port_mapping() -> bool {
+        true
+    }
+
+    fn default_relay_keepalive_interval_s() -> u32 {
+        120
+    }
+
+    impl Default for IrohTransportConfig {
+        fn default() -> Self {
+            Self {
+                relay_url: None,
+                relay_allow_plain_text: false,
+                enable_port_mapping: default_enable_port_mapping(),
+                max_frame_bytes: 100 * 1024 * 1024,
+                connect_timeout_s: 60,
+                auth_material_relay_base64: None,
+                relay_keepalive_interval_s: default_relay_keepalive_interval_s(
+                ),
+            }
+        }
+    }
+
+    /// Module-level config wrapper.
+    #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+    #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+    #[serde(rename_all = "camelCase")]
+    pub struct IrohTransportModConfig {
+        /// The actual config for the transport.
+        pub iroh_transport: IrohTransportConfig,
+    }
+}
+
+pub use config::*;
+
+/// Kitsune2 transport factory backed by iroh.
+#[derive(Debug)]
+pub struct IrohTransportFactory;
+
+impl IrohTransportFactory {
+    /// Create a new factory instance.
+    pub fn create() -> DynTransportFactory {
+        Arc::new(Self)
+    }
+}
+
+impl TransportFactory for IrohTransportFactory {
+    fn default_config(&self, config: &mut Config) -> K2Result<()> {
+        config.set_module_config(&IrohTransportModConfig::default())
+    }
+
+    fn validate_config(&self, config: &Config) -> K2Result<()> {
+        let config: IrohTransportModConfig = config.get_module_config()?;
+
+        // Prevent a zero-duration sleep from creating a busy
+        // keepalive loop that continuously issues blocking HTTP requests.
+        if config.iroh_transport.relay_keepalive_interval_s == 0 {
+            return Err(K2Error::other(
+                "Relay keepalive interval must be greater than zero",
+            ));
+        }
+
+        if let Some(relay) = &config.iroh_transport.relay_url {
+            let relay_server_url = ::url::Url::parse(relay)
+                .map_err(|err| K2Error::other_src("Invalid relay URL", err))?;
+            if relay_server_url.scheme() == "http"
+                && !config.iroh_transport.relay_allow_plain_text
+            {
+                return Err(K2Error::other("Disallowed plaintext relay URL"));
+            }
+        }
+
+        Ok(())
+    }
+
+    fn create(
+        &self,
+        builder: Arc<Builder>,
+        handler: DynTxHandler,
+    ) -> BoxFut<'static, K2Result<DynTransport>> {
+        Box::pin(async move {
+            let handler = TxImpHnd::new(handler);
+            let config: IrohTransportModConfig =
+                builder.config.get_module_config()?;
+
+            // Ensure the relay URL ends with '/' so that iroh appends
+            // paths correctly rather than replacing the last segment.
+            let mut transport_config = config.iroh_transport;
+            transport_config.relay_url =
+                transport_config.relay_url.map(|url| {
+                    if url.ends_with('/') {
+                        url
+                    } else {
+                        format!("{url}/")
+                    }
+                });
+
+            let auth_material = builder.auth_material_relay.clone();
+            let imp: DynTxImp = IrohTransport::create(
+                transport_config,
+                handler.clone(),
+                auth_material,
+            )
+            .await?;
+            Ok(DefaultTransport::create(&handler, imp))
+        })
+    }
+}
+
+type Connections = ConnectionRegistry<ConnectionContext>;
+
+/// Per-space relay state: maps SpaceId to (relay URL, our local URL on that relay).
+type SpaceRelays = Arc<RwLock<HashMap<SpaceId, (RelayUrl, Option<Url>)>>>;
+
+/// Parameters needed to (re-)authenticate for relay access.
+#[derive(Debug)]
+struct RelayAuthParams {
+    /// Base URL of the bootstrap server (e.g. `http://addr/`), used to
+    /// reach the `/authenticate` and `/relay/keepalive` endpoints.
+    server_url: ::url::Url,
+
+    /// Credentials used to obtain a bearer token from the auth server.
+    auth_material: kitsune2_bootstrap_client::AuthMaterial,
+
+    /// The relay URL the bearer token is presented to.
+    relay_url: RelayUrl,
+
+    /// The 32-byte iroh endpoint public key registered on the relay
+    /// allowlist.
+    key_bytes: [u8; 32],
+}
+
+/// Iroh-based transport implementation.
+#[derive(Debug)]
+struct IrohTransport {
+    endpoint: DynIrohEndpoint,
+    handler: Arc<TxImpHnd>,
+    local_url: Arc<RwLock<Option<Url>>>,
+    connections: Connections,
+    connection_locks: Arc<Mutex<HashMap<Url, Arc<tokio::sync::Mutex<()>>>>>,
+    watch_addr_task: AbortHandle,
+    accept_task: AbortHandle,
+    relay_keepalive_task: Option<AbortHandle>,
+    /// Keepalive tasks for per-space relays, keyed by relay URL.
+    space_relay_keepalives: Arc<Mutex<HashMap<RelayUrl, AbortHandle>>>,
+    config: IrohTransportConfig,
+    space_relays: SpaceRelays,
+}
+
+impl Drop for IrohTransport {
+    fn drop(&mut self) {
+        info!(local_url = ?self.local_url, "Dropping transport");
+        self.watch_addr_task.abort();
+        self.accept_task.abort();
+        if let Some(handle) = self.relay_keepalive_task.take() {
+            handle.abort();
+        }
+        self.space_relay_keepalives
+            .lock()
+            .expect("poisoned")
+            .drain()
+            .for_each(|(_, handle)| handle.abort());
+        // The connection reader task inside the connection context
+        // holds a reference to the context. Thus the context can
+        // only be dropped once that reference is dropped, which
+        // happens when the task is aborted.
+        self.connections.drain().into_iter().for_each(|ctx| {
+            debug!(remote_url = ?ctx.remote_url(), "Aborting connection context tasks");
+            ctx.abort_tasks();
+        });
+        let endpoint = self.endpoint.clone();
+        tokio::spawn(async move { endpoint.close().await });
+    }
+}
+
+impl IrohTransport {
+    async fn create(
+        config: IrohTransportConfig,
+        handler: Arc<TxImpHnd>,
+        auth_material: Option<Vec<u8>>,
+    ) -> K2Result<Arc<Self>> {
+        // Determine whether we need to authenticate for relay access.
+        // Authentication is required when both a relay URL and auth material
+        // are provided.
+        let needs_relay_auth =
+            config.relay_url.is_some() && auth_material.is_some();
+
+        // If a relay server is configured, only use that.
+        // Otherwise, use the default relay servers provided by n0.
+        let mut builder = if let Some(relay_url) = &config.relay_url {
+            if needs_relay_auth {
+                // Start with an empty relay map so the endpoint binds without
+                // immediately connecting to the relay. The relay transport is
+                // kept intact so that insert_relay (called after
+                // authentication) can establish the WebSocket connection.
+                Endpoint::builder(Minimal)
+                    .relay_mode(RelayMode::Custom(RelayMap::empty()))
+            } else {
+                let relay_url =
+                    RelayUrl::from_str(relay_url).map_err(|err| {
+                        K2Error::other_src("Invalid relay URL", err)
+                    })?;
+                let relay_map = RelayMap::from_iter([relay_url]);
+                Endpoint::builder(Minimal)
+                    .relay_mode(RelayMode::Custom(relay_map))
+            }
+        } else {
+            Endpoint::builder(Minimal).relay_mode(RelayMode::Default)
+        };
+
+        let transport_config = iroh::endpoint::QuicTransportConfig::builder()
+            .keep_alive_interval(Duration::from_secs(5))
+            .max_idle_timeout(Some(
+                Duration::from_secs(60).try_into().map_err(K2Error::other)?,
+            ))
+            .build();
+        builder = builder.transport_config(transport_config);
+        if !config.enable_port_mapping {
+            builder = builder.portmapper_config(iroh::endpoint::PortmapperConfig::Disabled);
+        }
+
+        // Set kitsune2 protocol for handling data.
+        builder = builder.alpns(vec![ALPN.to_vec()]);
+
+        // Test relay server uses self-signed certificate, so skip certificate verification.
+        #[cfg(feature = "test-utils")]
+        {
+            builder = builder.ca_tls_config(
+                iroh_relay::tls::CaTlsConfig::insecure_skip_verify(),
+            );
+        }
+
+        let endpoint = builder.bind().await.map_err(|err| {
+            K2Error::other_src("Failed to bind iroh endpoint", err)
+        })?;
+
+        // If relay auth is needed, obtain a bearer token from the bootstrap
+        // server before inserting the relay into the endpoint. The token is
+        // presented on the relay WebSocket upgrade and validated by the
+        // server at connect time. insert_relay is deferred until after the
+        // watcher task is spawned so that the address update it fires is
+        // guaranteed to be observed.
+        let relay_auth = if needs_relay_auth {
+            let relay_url_str = config
+                .relay_url
+                .as_deref()
+                .expect("relay_url checked above");
+            let auth_bytes =
+                auth_material.expect("auth_material checked above");
+
+            // Derive the server base URL from the relay URL by removing the path.
+            // e.g. "http://addr/relay/" -> "http://addr/"
+            let mut server_url =
+                ::url::Url::parse(relay_url_str).map_err(|e| {
+                    K2Error::other_src(
+                        "Invalid relay URL for authentication",
+                        e,
+                    )
+                })?;
+            server_url.set_path("/");
+
+            let relay_url = RelayUrl::from_str(relay_url_str)
+                .map_err(|err| K2Error::other_src("Invalid relay URL", err))?;
+
+            let params = Arc::new(RelayAuthParams {
+                server_url,
+                auth_material: kitsune2_bootstrap_client::AuthMaterial::new(
+                    auth_bytes,
+                ),
+                relay_url,
+                key_bytes: *endpoint.id().as_bytes(),
+            });
+
+            info!(server_url = %params.server_url, relay_url = relay_url_str, "Authenticating for relay access");
+
+            let token = Self::fetch_relay_token(&params).await?;
+            Self::relay_keepalive(&params).await?;
+
+            info!("Relay authentication complete, proceeding to insert relay");
+
+            Some((params, token))
+        } else {
+            None
+        };
+
+        // Clone the raw endpoint before consuming it into IrohEndpoint so that
+        // insert_relay can be called after the watcher task is subscribed.
+        // iroh::Endpoint is Arc-backed so this is a cheap reference copy.
+        let raw_endpoint_for_relay = if needs_relay_auth {
+            Some(endpoint.clone())
+        } else {
+            None
+        };
+
+        let endpoint = Arc::new(IrohEndpoint::new(endpoint));
+        let local_url = Arc::new(RwLock::new(None));
+        let connections = ConnectionRegistry::new();
+        let connection_locks = Arc::new(Mutex::new(HashMap::new()));
+
+        let watch_addr_task = Self::spawn_watch_addr_task(
+            endpoint.clone(),
+            handler.clone(),
+            local_url.clone(),
+        );
+
+        // The watcher is now subscribed. Insert the relay so that the address
+        // update it fires is captured by the running watcher task, ensuring
+        // local_url is populated before any outbound send can run.
+        if let Some(raw_ep) = raw_endpoint_for_relay {
+            let (params, token) = relay_auth
+                .as_ref()
+                .expect("relay_auth is Some when raw_endpoint_for_relay is");
+            let relay_url = params.relay_url.clone();
+            raw_ep
+                .insert_relay(
+                    relay_url.clone(),
+                    Self::relay_config_with_token(&relay_url, Some(token)),
+                )
+                .await;
+            info!(
+                ?relay_url,
+                "Relay inserted into endpoint, waiting for address assignment"
+            );
+        }
+
+        let space_relays: SpaceRelays = Arc::new(RwLock::new(HashMap::new()));
+
+        let accept_task = Self::spawn_accept_task(
+            endpoint.clone(),
+            handler.clone(),
+            connections.clone(),
+            local_url.clone(),
+            config.max_frame_bytes,
+            space_relays.clone(),
+        );
+
+        // Keep the endpoint's relay allowlist entry alive.
+        let relay_keepalive_task = relay_auth.map(|(params, _)| {
+            Self::spawn_relay_keepalive_task(
+                params,
+                Duration::from_secs(config.relay_keepalive_interval_s as u64),
+            )
+        });
+
+        let out = Arc::new(Self {
+            endpoint,
+            handler,
+            local_url,
+            connections,
+            connection_locks,
+            watch_addr_task,
+            accept_task,
+            relay_keepalive_task,
+            space_relay_keepalives: Arc::new(Mutex::new(HashMap::new())),
+            config,
+            space_relays,
+        });
+        Ok(out)
+    }
+
+    /// Keep the endpoint public key registered with the bootstrap server's
+    /// relay allowlist, re-authenticating on 401.
+    async fn relay_keepalive(params: &Arc<RelayAuthParams>) -> K2Result<()> {
+        let params = params.clone();
+        tokio::task::spawn_blocking(move || {
+            kitsune2_bootstrap_client::blocking_relay_keepalive(
+                params.server_url.clone(),
+                &params.auth_material,
+                &params.key_bytes,
+            )
+        })
+        .await
+        .map_err(|e| K2Error::other_src("Registration task failed", e))?
+    }
+
+    /// Spawns periodic calls to [`Self::relay_keepalive`].
+    fn spawn_relay_keepalive_task(
+        params: Arc<RelayAuthParams>,
+        interval: Duration,
+    ) -> AbortHandle {
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(interval).await;
+
+                match Self::relay_keepalive(&params).await {
+                    Ok(()) => {
+                        debug!("Relay keepalive succeeded");
+                    }
+                    Err(e) => warn!(?e, "Relay keepalive failed"),
+                }
+            }
+        })
+        .abort_handle()
+    }
+
+    /// Authenticate against the bootstrap server and return the relay
+    /// bearer token.
+    async fn fetch_relay_token(
+        params: &Arc<RelayAuthParams>,
+    ) -> K2Result<String> {
+        let params = params.clone();
+        tokio::task::spawn_blocking(move || {
+            kitsune2_bootstrap_client::blocking_fetch_relay_token(
+                params.server_url.clone(),
+                &params.auth_material,
+            )
+        })
+        .await
+        .map_err(|e| K2Error::other_src("Authentication task failed", e))?
+    }
+
+    /// Build a relay config, attaching the bearer token when provided.
+    ///
+    /// iroh sends the token as an `Authorization: Bearer` header on every
+    /// relay WebSocket upgrade, so it is automatically re-presented on
+    /// every reconnect.
+    fn relay_config_with_token(
+        relay_url: &RelayUrl,
+        token: Option<&str>,
+    ) -> Arc<RelayConfig> {
+        let mut config = RelayConfig::from(relay_url.clone());
+        if let Some(token) = token {
+            config = config.with_auth_token(token);
+        }
+        Arc::new(config)
+    }
+
+    /// Spawns a background task to watch for changes in the endpoint's listening address.
+    ///
+    /// The task monitors the iroh endpoint's address watcher, updating the local URL
+    /// when it changes and notifying the handler of a new listening address.
+    /// It runs asynchronously until the watcher encounters an error.
+    fn spawn_watch_addr_task(
+        endpoint: DynIrohEndpoint,
+        handler: Arc<TxImpHnd>,
+        local_url: Arc<RwLock<Option<Url>>>,
+    ) -> AbortHandle {
+        let mut watcher = endpoint.watch_addr();
+        tokio::spawn(async move {
+            loop {
+                match watcher.updated().await {
+                    Ok(addr) => {
+                        if let Some(url) = get_url_with_first_relay(&addr) {
+                            {
+                                info!(?url, "Received a new listening address from relay server");
+                                let mut guard =
+                                    local_url.write().expect("poisoned");
+                                if guard.as_ref() != Some(&url) {
+                                    *guard = Some(url.clone());
+                                }
+                            }
+                            handler.new_listening_address(url.clone(), None).await;
+                        }
+                    }
+                    Err(err) => {
+                        error!(
+                            ?err,
+                            "Address watcher update failed, stopping watch loop"
+                        );
+                        break;
+                    }
+                }
+            }
+        })
+        .abort_handle()
+    }
+
+    /// Spawns a background task to accept incoming connections from the iroh endpoint.
+    ///
+    /// The task runs in a loop, accepting incoming connections asynchronously.
+    /// For each accepted connection, it creates a new [`ConnectionContext`] and spawns
+    /// a connection reader to handle incoming uni-directional streams.
+    fn spawn_accept_task(
+        endpoint: DynIrohEndpoint,
+        handler: Arc<TxImpHnd>,
+        connections: Connections,
+        local_url: Arc<RwLock<Option<Url>>>,
+        max_frame_bytes: usize,
+        space_relays: SpaceRelays,
+    ) -> AbortHandle {
+        tokio::spawn(async move {
+            loop {
+                match endpoint.accept().await {
+                    Some(Ok(connection)) => {
+                        info!(remote_id = ?connection.remote_id(),"Receiving incoming connection");
+                        let conn_opened_at_s = SystemTime::UNIX_EPOCH
+                            .elapsed()
+                            .unwrap_or_else(|err| {
+                                warn!(?err, "Failed to get system time");
+                                Duration::from_secs(0)
+                            })
+                            .as_secs();
+
+                        // Create a new connection context.
+                        ConnectionContext::new(
+                            ConnectionContextParams{
+                            handler: handler.clone(),
+                            connection,
+                            local_id: endpoint.id_bytes(),
+                            dialed_by_us: false,
+                            remote_url: None,
+                            preflight_sent: false,
+                            opened_at_s: conn_opened_at_s,
+                            connections: connections.clone(),
+                            local_url: local_url.clone(),
+                            space_relays: space_relays.clone(),
+                            max_frame_bytes,
+                        });
+                    }
+                    Some(Err(err)) => {
+                        error!(?err, "iroh incoming connection failed");
+                    }
+                    None => {
+                        error!(
+                            "iroh incoming connection failed - endpoint closed"
+                        );
+                        break;
+                    }
+                }
+            }
+        })
+        .abort_handle()
+    }
+
+    /// Choose which of our own URLs to advertise in a preflight to `peer_url`.
+    ///
+    /// If the peer is on one of our per-space relays, return our URL on
+    /// that relay. If the peer is on our global relay, return our global
+    /// URL. If the peer is on an unknown relay, return `None` — the
+    /// preflight must fail rather than silently falling back to the wrong
+    /// relay.
+    pub(crate) fn own_url_for_preflight(
+        peer_url: &Url,
+        space_relays: &HashMap<SpaceId, (RelayUrl, Option<Url>)>,
+        global_url: &Option<Url>,
+    ) -> Option<Url> {
+        let peer_relay = match relay_url_from_peer_url(peer_url) {
+            Ok(r) => r,
+            Err(_) => {
+                warn!(%peer_url, "Cannot extract relay from peer URL, failing preflight");
+                return None;
+            }
+        };
+
+        for (relay_url, our_url) in space_relays.values() {
+            if *relay_url == peer_relay
+                && let Some(url) = our_url
+            {
+                info!(
+                    %peer_url,
+                    own_url = %url,
+                    "Using per-space URL for preflight"
+                );
+                return Some(url.clone());
+            }
+        }
+
+        if let Some(global) = global_url
+            && let Ok(our_relay) = relay_url_from_peer_url(global)
+            && our_relay == peer_relay
+        {
+            return Some(global.clone());
+        }
+
+        warn!(
+            %peer_url,
+            %peer_relay,
+            "Peer is on unknown relay, failing preflight"
+        );
+        None
+    }
+
+    /// Creates a new connection and its associated context for a peer.
+    ///
+    /// The connection is established and the preflight frame is sent. If this
+    /// action succeeds, the context is returned. In case of error during the
+    /// preflight, the context is dropped and an error returned.
+    async fn create_connection_and_context(
+        &self,
+        target: EndpointAddr,
+        remote_url: Url,
+    ) -> K2Result<Arc<ConnectionContext>> {
+        // Guard: if the relay has explicitly failed (Disconnected state), skip
+        // the attempt entirely. A 60-second QUIC timeout while the relay is
+        // recovering would falsely mark the peer as unresponsive (e.g. after
+        // Android doze mode kills the network).
+        //
+        // We check for Disconnected specifically — not Connecting — because
+        // Connecting at startup is normal and we must not block those attempts.
+        // Disconnected means iroh detected an actual failure and has recorded
+        // a last_error; Connecting means iroh is still dialling.
+        if self.endpoint.is_home_relay_known_down() {
+            debug!(
+                ?remote_url,
+                "skipping outbound connection: relay known down, \
+                 peer will not be marked unresponsive"
+            );
+            return Err(K2Error::other(RELAY_NOT_CONNECTED_ERR));
+        }
+
+        // Establish connection
+        debug!(?target, connect_timeout_s = self.config.connect_timeout_s, remote = ?remote_url.peer_id(), "Attempting QUIC connection");
+        let start = Instant::now();
+        let conn = match tokio::time::timeout(
+            Duration::from_secs(self.config.connect_timeout_s as u64),
+            self.endpoint.connect(target.clone(), ALPN),
+        )
+        .await
+        {
+            Err(e) => {
+                // On connection establishment error, mark the peer unresponsive
+                let _ = self
+                    .handler
+                    .set_unresponsive(remote_url.clone(), Timestamp::now())
+                    .await;
+
+                Err(K2Error::other_src("iroh connect timed out", e))
+            }
+            Ok(Err(e)) => {
+                // On connection establishment error, mark the peer unresponsive
+                let _ = self
+                    .handler
+                    .set_unresponsive(remote_url.clone(), Timestamp::now())
+                    .await;
+
+                Err(K2Error::other_src("iroh connect error", e))
+            }
+            Ok(Ok(conn)) => Ok(conn),
+        }?;
+        info!(remote = ?remote_url.peer_id(), direct = ?conn.is_direct(), duration = ?start.elapsed(), "Connection established");
+
+        let conn_opened_at_s = SystemTime::UNIX_EPOCH
+            .elapsed()
+            .unwrap_or_else(|err| {
+                warn!(?err, "Failed to get system time");
+                Duration::from_secs(0)
+            })
+            .as_secs();
+
+        // Send preflight as first message on the new connection.
+        // Pick which of our URLs to advertise: per-space relay URL if
+        // the peer is on one of our per-space relays, global URL otherwise.
+        let global_url = self.local_url.read().expect("poisoned").clone();
+        let space_relays_snapshot =
+            self.space_relays.read().expect("poisoned").clone();
+        let maybe_local_url = Self::own_url_for_preflight(
+            &remote_url,
+            &space_relays_snapshot,
+            &global_url,
+        );
+        if let Some(current_local_url) = maybe_local_url {
+            let preflight_bytes =
+                self.handler.peer_connect(remote_url.clone()).await?;
+
+            let ctx = ConnectionContext::new(ConnectionContextParams {
+                handler: self.handler.clone(),
+                connection: conn,
+                local_id: self.endpoint.id_bytes(),
+                dialed_by_us: true,
+                remote_url: Some(remote_url.clone()),
+                preflight_sent: true,
+                opened_at_s: conn_opened_at_s,
+                connections: self.connections.clone(),
+                local_url: self.local_url.clone(),
+                space_relays: self.space_relays.clone(),
+                max_frame_bytes: self.config.max_frame_bytes,
+            });
+
+            // Register the candidate before sending the preflight, so that a
+            // competing inbound connection from the same peer resolves against
+            // this dial instead of racing an unpublished one. Both directions
+            // reach the same verdict whichever order they register in, because
+            // the tie-break is deterministic and the registry applies it
+            // atomically.
+            if !self.connections.register_candidate(&remote_url, &ctx) {
+                ctx.close_superseded();
+                return Ok(ctx);
+            }
+
+            if let Err(e) = ctx
+                .send_preflight_frame(
+                    current_local_url.clone(),
+                    preflight_bytes,
+                )
+                .await
+            {
+                // Being published from this point on means a competing
+                // connection can take the peer's slot and close this dial
+                // underneath the preflight write. Either end can decide that:
+                // the remote rejecting this dial in favour of its own is in
+                // fact the more common way this write fails. That is
+                // simultaneous-open resolution working as intended, not a peer
+                // that failed: marking it unresponsive would stall gossip with
+                // it until its agent info expires. Hand the context back
+                // instead, so the caller retries on the connection that won.
+                if ctx.is_superseded() {
+                    debug!(
+                        remote = ?remote_url.peer_id(),
+                        "Dial superseded while sending preflight"
+                    );
+                    return Ok(ctx);
+                }
+
+                // On send preflight error, mark the peer unresponsive
+                let _ = self
+                    .handler
+                    .set_unresponsive(remote_url.clone(), Timestamp::now())
+                    .await;
+
+                ctx.close_failed(e.to_string().as_bytes());
+                self.connections.remove_if_current(&remote_url, &ctx);
+
+                return Err(e);
+            }
+
+            Ok(ctx)
+        } else {
+            warn!(
+                ?remote_url,
+                "Outbound connection attempted before relay address is known; relay registration may still be in progress"
+            );
+            Err(K2Error::other(
+                "Connection attempted before home relay URL is known",
+            ))
+        }
+    }
+
+    /// Dynamically add a relay server to the shared iroh endpoint.
+    ///
+    /// If `auth_material` is provided, a bearer token is obtained from the
+    /// bootstrap server and presented on the relay WebSocket upgrade, and
+    /// the endpoint public key is registered on the relay allowlist.
+    ///
+    /// Returns the parsed RelayUrl, our kitsune2 peer URL on that relay,
+    /// and the auth params when authentication is in use, so the caller
+    /// can spawn a keepalive task.
+    async fn do_insert_relay(
+        endpoint: DynIrohEndpoint,
+        relay_url: String,
+        auth_material: Option<Vec<u8>>,
+    ) -> K2Result<(RelayUrl, Url, Option<Arc<RelayAuthParams>>)> {
+        let relay_url_str = if relay_url.ends_with('/') {
+            relay_url
+        } else {
+            format!("{relay_url}/")
+        };
+
+        let relay_url_parsed = RelayUrl::from_str(&relay_url_str)
+            .map_err(|err| K2Error::other_src("Invalid relay URL", err))?;
+
+        let (auth_params, token) = if let Some(auth_bytes) = auth_material {
+            let mut server_url =
+                ::url::Url::parse(&relay_url_str).map_err(|e| {
+                    K2Error::other_src(
+                        "Invalid relay URL for authentication",
+                        e,
+                    )
+                })?;
+            server_url.set_path("/");
+
+            let params = Arc::new(RelayAuthParams {
+                server_url,
+                auth_material: kitsune2_bootstrap_client::AuthMaterial::new(
+                    auth_bytes,
+                ),
+                relay_url: relay_url_parsed.clone(),
+                key_bytes: endpoint.id_bytes(),
+            });
+            let token = Self::fetch_relay_token(&params).await?;
+            Self::relay_keepalive(&params).await?;
+            (Some(params), Some(token))
+        } else {
+            (None, None)
+        };
+
+        endpoint
+            .insert_relay(
+                relay_url_parsed.clone(),
+                Self::relay_config_with_token(
+                    &relay_url_parsed,
+                    token.as_deref(),
+                ),
+            )
+            .await;
+
+        let endpoint_id = EndpointId::from(
+            iroh::PublicKey::from_bytes(&endpoint.id_bytes()).map_err(|e| {
+                K2Error::other_src("invalid endpoint public key", e)
+            })?,
+        );
+        let local_url = canonicalize_relay_url(&relay_url_parsed, endpoint_id)?;
+
+        info!(
+            %local_url,
+            %relay_url_str,
+            "do_insert_relay: relay added, local URL constructed"
+        );
+
+        Ok((relay_url_parsed, local_url, auth_params))
+    }
+}
+
+async fn wait_for_send_replacement(
+    connections: &Connections,
+    remote_url: &Url,
+    superseded: &Arc<ConnectionContext>,
+    deadline: tokio::time::Instant,
+) -> K2Result<Arc<ConnectionContext>> {
+    if deadline <= tokio::time::Instant::now() {
+        connections.remove_if_current(remote_url, superseded);
+        return Err(K2Error::other(format!(
+            "timed out waiting for the connection selected for {remote_url}"
+        )));
+    }
+
+    match tokio::time::timeout_at(
+        deadline,
+        connections.wait_for_replacement(remote_url, superseded),
+    )
+    .await
+    {
+        Ok(replacement) => Ok(replacement),
+        Err(err) => {
+            connections.remove_if_current(remote_url, superseded);
+            Err(K2Error::other_src(
+                format!(
+                    "timed out waiting for the connection selected for {remote_url}"
+                ),
+                err,
+            ))
+        }
+    }
+}
+
+impl TxImp for IrohTransport {
+    fn url(&self) -> Option<Url> {
+        self.local_url.read().expect("poisoned").clone()
+    }
+
+    fn disconnect(
+        &self,
+        peer: Url,
+        payload: Option<(String, Bytes)>,
+    ) -> BoxFut<'_, ()> {
+        let ctx = self.connections.take(&peer);
+        if let Some(ctx) = ctx {
+            // The reason string travels in the QUIC application close frame
+            // itself, so the encoded payload message is intentionally not
+            // sent as a data frame first.
+            let reason = payload
+                .map(|(reason, _)| reason)
+                .unwrap_or_else(|| "Disconnecting from remote".to_string());
+            ctx.disconnect(close_code::CloseCode::Graceful, reason);
+        }
+        Box::pin(async {})
+    }
+
+    fn send(&self, remote_url: Url, data: Bytes) -> BoxFut<'_, K2Result<()>> {
+        let connections = self.connections.clone();
+        let connection_locks = self.connection_locks.clone();
+
+        Box::pin(async move {
+            let remote = match endpoint_from_url(&remote_url) {
+                Err(e) => {
+                    // If we cannot convert the url to an endpoint address, mark the peer unresponsive
+                    let _ = self
+                        .handler
+                        .set_unresponsive(remote_url.clone(), Timestamp::now())
+                        .await;
+
+                    Err(K2Error::other_src(
+                        format!(
+                            "iroh send error converting Url to EndpointAddr {remote_url}"
+                        ),
+                        e,
+                    ))
+                }
+                ok => ok,
+            }?;
+
+            // Get or create the connection lock for this peer to serialize connection creation.
+            let peer_lock = {
+                let mut locks = connection_locks.lock().expect("poisoned");
+                locks
+                    .entry(remote_url.clone())
+                    .or_insert_with(|| Arc::new(tokio::sync::Mutex::new(())))
+                    .clone()
+            };
+
+            let mut ctx = {
+                let _lock_guard = peer_lock.lock().await;
+                let existing = connections.get(&remote_url);
+                if let Some(ctx) = existing {
+                    ctx
+                } else {
+                    info!(remote = ?remote_url.peer_id(), "Establishing connection to remote");
+                    self.create_connection_and_context(
+                        remote,
+                        remote_url.clone(),
+                    )
+                    .await?
+                }
+            };
+            let send_deadline = tokio::time::Instant::now() + PREFLIGHT_TIMEOUT;
+
+            loop {
+                match ctx.wait_for_resolution().await {
+                    ConnectionResolution::Active => {
+                        let is_active = connections
+                            .get(&remote_url)
+                            .is_some_and(|active| Arc::ptr_eq(&active, &ctx));
+                        if !is_active {
+                            ctx = wait_for_send_replacement(
+                                &connections,
+                                &remote_url,
+                                &ctx,
+                                send_deadline,
+                            )
+                            .await?;
+                            continue;
+                        }
+                    }
+                    ConnectionResolution::Superseded => {
+                        debug!(
+                            remote = ?remote_url.peer_id(),
+                            "Waiting for the connection that won simultaneous-open resolution"
+                        );
+                        ctx = wait_for_send_replacement(
+                            &connections,
+                            &remote_url,
+                            &ctx,
+                            send_deadline,
+                        )
+                        .await?;
+                        continue;
+                    }
+                    // The remote rejected the preflight, or the connection
+                    // died before it was usable. Historically `send` returned
+                    // success here and the failure surfaced through
+                    // `peer_disconnect`/`set_unresponsive`; keep that
+                    // behavior so callers are not newly broken.
+                    ConnectionResolution::Closed => return Ok(()),
+                }
+
+                // The connection was the live one when it was picked, but a
+                // competing connection can still win the peer's slot while the
+                // frame is being written, which closes this one underneath the
+                // write. Either end can decide that, so `is_superseded` reads
+                // both the local verdict and the remote's close code; a write
+                // failure it does not recognize is reported as before.
+                //
+                // In principle the retry below can re-send a payload that
+                // actually reached the peer before a later flush/ack step
+                // failed. `send_space_notify` is at-most-once and every
+                // consumer already tolerates duplicates, so this is accepted.
+                match ctx.send_data_frame(data.clone()).await {
+                    Ok(()) => return Ok(()),
+                    Err(err) if ctx.is_superseded() => {
+                        debug!(
+                            remote = ?remote_url.peer_id(),
+                            ?err,
+                            "Connection superseded mid-send; waiting for winner"
+                        );
+                        ctx = wait_for_send_replacement(
+                            &connections,
+                            &remote_url,
+                            &ctx,
+                            send_deadline,
+                        )
+                        .await?;
+                    }
+                    Err(err) => return Err(err),
+                }
+            }
+        })
+    }
+
+    fn get_connected_peers(&self) -> BoxFut<'_, K2Result<Vec<Url>>> {
+        Box::pin(async { Ok(self.connections.active_peers()) })
+    }
+
+    fn dump_network_stats(&self) -> BoxFut<'_, K2Result<TransportStats>> {
+        Box::pin(async move {
+            let mut peer_urls = Vec::new();
+            if let Some(own_url) =
+                self.local_url.read().expect("poisoned").clone()
+            {
+                peer_urls.push(own_url);
+            }
+            let stat_connections = self
+                .connections
+                .active_entries()
+                .into_iter()
+                .map(|(_, context)| {
+                    TransportConnectionStats {
+                        // Active contexts completed the URL exchange.
+                        pub_key: context
+                            .remote_url()
+                            .unwrap()
+                            .peer_id()
+                            .unwrap()
+                            .to_string(),
+                        send_message_count: context.get_send_message_count(),
+                        send_bytes: context.get_send_bytes(),
+                        recv_message_count: context.get_recv_message_count(),
+                        recv_bytes: context.get_recv_bytes(),
+                        opened_at_s: context.get_opened_at_s(),
+                        is_direct: context.is_direct(),
+                    }
+                })
+                .collect();
+            Ok(TransportStats {
+                backend: "iroh".to_string(),
+                peer_urls,
+                connections: stat_connections,
+            })
+        })
+    }
+
+    fn configure_for_space(
+        &self,
+        space_id: SpaceId,
+        config: &Config,
+    ) -> BoxFut<'_, K2Result<()>> {
+        let per_space_config: Option<IrohTransportModConfig> =
+            config.get_module_config().ok();
+
+        let per_space = per_space_config.map(|c| c.iroh_transport);
+
+        let space_relay = per_space_relay(
+            per_space.as_ref().and_then(|c| c.relay_url.as_deref()),
+            per_space
+                .as_ref()
+                .and_then(|c| c.auth_material_relay_base64.as_deref()),
+            self.config.relay_url.as_deref(),
+            self.config.auth_material_relay_base64.as_deref(),
+        );
+
+        if let Some(SpaceRelay {
+            url,
+            auth_material_base64,
+        }) = space_relay
+        {
+            let auth_material = auth_material_base64.and_then(|b64| {
+                use ::base64::Engine;
+                let decoded = ::base64::engine::general_purpose::STANDARD
+                    .decode(&b64)
+                    .ok();
+                if decoded.is_none() {
+                    tracing::warn!(
+                        ?space_id,
+                        "Ignoring per-space relay auth material that is not \
+                         valid base64; the relay will be used unauthenticated"
+                    );
+                }
+                decoded
+            });
+
+            let endpoint = self.endpoint.clone();
+            let space_relays = self.space_relays.clone();
+            let space_relay_keepalives = self.space_relay_keepalives.clone();
+            let keepalive_interval = Duration::from_secs(
+                self.config.relay_keepalive_interval_s as u64,
+            );
+            let handler = self.handler.clone();
+            let space_id_clone = space_id.clone();
+
+            Box::pin(async move {
+                tokio::spawn(async move {
+                    match Self::do_insert_relay(endpoint, url, auth_material)
+                        .await
+                    {
+                        Ok((relay_url, local_url, auth_params)) => {
+                            space_relays.write().expect("poisoned").insert(
+                                space_id_clone.clone(),
+                                (relay_url.clone(), Some(local_url.clone())),
+                            );
+                            // Keep the allowlist entry for this relay alive
+                            // for as long as the relay is in use.
+                            if let Some(params) = auth_params {
+                                space_relay_keepalives
+                                    .lock()
+                                    .expect("poisoned")
+                                    .entry(relay_url)
+                                    .or_insert_with(|| {
+                                        Self::spawn_relay_keepalive_task(
+                                            params,
+                                            keepalive_interval,
+                                        )
+                                    });
+                            }
+                            handler
+                                .new_listening_address(
+                                    local_url,
+                                    Some(&space_id_clone),
+                                )
+                                .await;
+                        }
+                        Err(e) => {
+                            tracing::error!(
+                                ?space_id_clone,
+                                ?e,
+                                "Background relay insertion failed"
+                            );
+                        }
+                    }
+                });
+
+                Ok(())
+            })
+        } else {
+            Box::pin(async { Ok(()) })
+        }
+    }
+
+    fn unconfigure_for_space(
+        &self,
+        space_id: SpaceId,
+    ) -> BoxFut<'_, K2Result<()>> {
+        self.handler.unmark_per_space_managed(&space_id);
+
+        Box::pin(async move {
+            let removed = self
+                .space_relays
+                .write()
+                .expect("poisoned")
+                .remove(&space_id);
+
+            if let Some((relay_url, _)) = removed {
+                let still_used = self
+                    .space_relays
+                    .read()
+                    .expect("poisoned")
+                    .values()
+                    .any(|(r, _)| r == &relay_url);
+
+                if !still_used {
+                    // A space may have inserted the transport's own relay to
+                    // present auth material of its own. It does not own it, so
+                    // releasing the space must not take the relay with it.
+                    if is_transport_own_relay(
+                        relay_url.as_str(),
+                        self.config.relay_url.as_deref(),
+                    ) {
+                        tracing::debug!(
+                            ?space_id,
+                            %relay_url,
+                            "Keeping the transport's own relay after releasing the space"
+                        );
+                    } else {
+                        self.endpoint.remove_relay(&relay_url).await;
+                        tracing::info!(
+                            ?space_id,
+                            %relay_url,
+                            "Removed per-space relay from endpoint"
+                        );
+                    }
+
+                    // The space's keepalive goes with the space either way.
+                    if let Some(handle) = self
+                        .space_relay_keepalives
+                        .lock()
+                        .expect("poisoned")
+                        .remove(&relay_url)
+                    {
+                        handle.abort();
+                    }
+                }
+            }
+
+            Ok(())
+        })
+    }
+}

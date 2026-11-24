@@ -12,7 +12,7 @@ pub fn attachment_defaults_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_begin_transaction_step(None, None)?;
     let mut descriptors = Vec::new();
     for key in
-        ["HolonType.TypeDescriptor", "MetaHolonType.MetaTypeDescriptor", "MAP Core Schema-v0.0.7"]
+        ["HolonType.TypeDescriptor", "MetaHolonType.MetaTypeDescriptor", "MAP Core Schema-v0.0.11"]
     {
         let key = MapString(key.into());
         let stub = fixture_context.mutation().new_holon(Some(key.clone()))?;

@@ -1,5 +1,5 @@
-schema "MAP Design Tokens Schema-v0.1.0" {
-  depends_on "MAP Core Schema-v0.0.7"
+schema "MAP Design Tokens Schema-v0.1.4" {
+  depends_on "MAP Core Schema-v0.0.11"
   header {
     description: "MAP vocabulary for named semantic DesignTokens and their DTCG-aligned DesignTokenTypes. It intentionally defines neither Meta Design Systems, Themes, aliases, groups, primitive/reference-token layers, nor DTCG serialization."
   }
@@ -251,6 +251,15 @@ instance CanvasFontFamily.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "CanvasFontFamily"
   DesignTokenDescription "Default typeface family for text within a canvas."
+  relationships {
+    HasDesignTokenType -> FontFamily.DesignTokenType
+  }
+}
+
+instance CanvasHeadingFontFamily.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "CanvasHeadingFontFamily"
+  DesignTokenDescription "Typeface family for canvas titles and section headings, independent of body text."
   relationships {
     HasDesignTokenType -> FontFamily.DesignTokenType
   }

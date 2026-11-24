@@ -89,7 +89,7 @@ pub enum VisualizerKind {
     Action,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct VisualizerSelection {
     pub selected: HolonReference,
     pub requested_kind: VisualizerKind,

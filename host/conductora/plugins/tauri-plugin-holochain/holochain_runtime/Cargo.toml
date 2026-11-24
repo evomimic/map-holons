@@ -68,3 +68,6 @@ sqlite-encrypted = [
     "holochain/encryption",
     "lair_keystore/rusqlite-bundled-sqlcipher-vendored-openssl"
 ]
+
+[dev-dependencies]
+kitsune2_transport_iroh = "=0.5.2"

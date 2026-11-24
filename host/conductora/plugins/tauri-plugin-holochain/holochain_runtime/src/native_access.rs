@@ -75,9 +75,11 @@ impl NativeAdministration {
                 return Err(crate::Error::NativeBoundary("Unsupported cell kind".into()));
             };
             if cell.cell_id.dna_hash() != dna.dna_hash() {
-                return Err(crate::Error::NativeBoundary(
-                    "Persisted DNA differs from packaged DNA".into(),
-                ));
+                return Err(crate::Error::IncompatibleEnvironment(format!(
+                    "Persisted DNA {} differs from packaged DNA {}",
+                    cell.cell_id.dna_hash(),
+                    dna.dna_hash()
+                )));
             }
             match self
                 .request(AdminRequest::GetDnaDefinition(Box::new(cell.cell_id.clone())))
@@ -85,7 +87,7 @@ impl NativeAdministration {
             {
                 AdminResponse::DnaDefinitionReturned(actual) if actual == *dna.dna_def() => {}
                 _ => {
-                    return Err(crate::Error::NativeBoundary(
+                    return Err(crate::Error::IncompatibleEnvironment(
                         "Persisted coordinator differs from package; explicit upgrade is required"
                             .into(),
                     ))
@@ -384,10 +386,13 @@ mod tests {
             .unwrap();
         let app = admin.enable_app("map_holons".into()).await.unwrap();
         admin.verify_packaged_app(&app, &package).await.unwrap();
+        assert!(matches!(admin.verify_packaged_app(&app, &incompatible).await,
+            Err(crate::Error::IncompatibleEnvironment(message)) if message.contains("DNA")));
         assert!(admin.upgrade_packaged_coordinators(&app, &incompatible).await.is_err());
         admin.verify_packaged_app(&app, &package).await.unwrap();
         assert!(admin.upgrade_packaged_coordinators(&app, &changed).await.unwrap());
-        assert!(admin.verify_packaged_app(&app, &package).await.is_err());
+        assert!(matches!(admin.verify_packaged_app(&app, &package).await,
+            Err(crate::Error::IncompatibleEnvironment(message)) if message.contains("coordinator")));
         assert!(!admin.upgrade_packaged_coordinators(&app, &changed).await.unwrap());
         let after = admin.list_apps().await.unwrap().remove(0);
         assert_eq!(after.agent_pub_key, author);

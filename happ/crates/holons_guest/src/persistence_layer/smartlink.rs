@@ -159,6 +159,14 @@ impl SmartLinkBucket {
 }
 
 impl SmartLinkWriteContext {
+    /// Discards a bucket changed by deletion before subsequent insertion checks.
+    pub(crate) fn invalidate(&mut self, source: &LocalId, name: &RelationshipName) {
+        self.buckets.remove(&SmartLinkBucketKey {
+            source_id: source.clone(),
+            relationship_name: name.clone(),
+        });
+    }
+
     fn bucket_for<F>(
         &mut self,
         key: SmartLinkBucketKey,
@@ -747,6 +755,23 @@ mod tests {
             })
             .unwrap();
         assert_eq!(expansion_count, 1);
+    }
+
+    #[test]
+    fn deletion_invalidates_only_the_changed_bucket_before_reinsertion() {
+        let other = SmartLinkBucketKey::from_prepared(&prepared("Other"));
+        let prepared = prepared("Related");
+        let key = SmartLinkBucketKey::from_prepared(&prepared);
+        let mut context = SmartLinkWriteContext::default();
+        context.bucket_for(key.clone(), || Ok(vec![decoded_smartlink(3, "")])).unwrap();
+        context.bucket_for(other.clone(), || Ok(Vec::new())).unwrap();
+        context.invalidate(&prepared.source_id, &prepared.relationship_name);
+        let refreshed = context.bucket_for(key, || Ok(Vec::new())).unwrap();
+        assert!(
+            refreshed.identities.is_empty(),
+            "a deleted identity must not suppress reinsertion"
+        );
+        context.bucket_for(other, || panic!("unrelated buckets stay cached")).unwrap();
     }
 
     #[test]

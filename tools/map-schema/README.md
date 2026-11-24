@@ -34,6 +34,11 @@ are allowed. Conflicting lowered holon keys produce diagnostics at every conflic
 declaration, retain source events for navigation, and contribute no ambiguous graph
 facts. Missing local reference targets are opaque and generate no diagnostics.
 
+Instance-only TDL files can declare `meta { schema_key: "<SchemaKey>" }` (using the
+usual newline-oriented block) to preserve their explicit file scope in loader JSON.
+The JSON decompiler uses this metadata when no Schema holon or descriptor
+`ComponentOf` identifies the scope. This adds no ownership relationship to instances.
+
 ## LSP requests
 
 Supported standard requests are `textDocument/documentSymbol`, `workspace/symbol`,

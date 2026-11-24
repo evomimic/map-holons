@@ -342,6 +342,8 @@ fn schema_membership_bindings_preserve_directional_version_ownership() -> Result
         ("(Schema.HolonType)-[Rules]->(Rule.HolonType)", "Lineage"),
         ("(TypeDescriptor)-[ComponentOf]->(Schema.HolonType)", "Version"),
         ("(Rule.HolonType)-[RuleOf]->(Schema.HolonType)", "Version"),
+        ("(HolonType.TypeDescriptor)-[OwnedBy]->(HolonSpace.HolonType)", "Lineage"),
+        ("(HolonSpace.HolonType)-[Owns]->(HolonType.TypeDescriptor)", "Lineage"),
     ] {
         let holon = holons(&documents)
             .find(|holon| holon["key"] == key)
@@ -389,7 +391,7 @@ fn key_uniqueness_is_holon_contextual_and_key_inputs_are_definitional() -> Resul
         .as_array()
         .unwrap()
         .iter()
-        .any(|r| r["name"] == "RuleOf" && r["target"][0]["$ref"] == "MAP Core Schema-v0.0.7"));
+        .any(|r| r["name"] == "RuleOf" && r["target"][0]["$ref"] == "MAP Core Schema-v0.0.11"));
     let level = holons
         .iter()
         .find(|h| h["key"] == "ValidationLevel.MapEnumValueType")
@@ -535,7 +537,7 @@ fn inventory_rejects_the_missing_design_token_dependency() -> Result<()> {
     let mut removed = false;
     for document in &mut documents {
         for holon in document["holons"].as_array_mut().expect("canonical holons") {
-            if holon["key"] != "MAP DAHN Schema-v0.1.0" {
+            if holon["key"] != "MAP DAHN Schema-v0.1.4" {
                 continue;
             }
             for relationship in holon["relationships"].as_array_mut().expect("schema relationships")
@@ -545,7 +547,7 @@ fn inventory_rejects_the_missing_design_token_dependency() -> Result<()> {
                 }
                 relationship["target"].as_array_mut().expect("dependency targets").retain(
                     |target| {
-                        let keep = target["$ref"] != "MAP Design Tokens Schema-v0.1.0";
+                        let keep = target["$ref"] != "MAP Design Tokens Schema-v0.1.4";
                         removed |= !keep;
                         keep
                     },

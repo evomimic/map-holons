@@ -12,7 +12,7 @@ describe('MaterializedVisualizerRuntime', () => {
     const implementation = class Explorer {};
     const importer = vi.fn().mockResolvedValue({ default: implementation });
     const runtime = new MaterializedVisualizerRuntime(new MaterializedVisualizerCache({ materialize: base }), importer);
-    const selected = { key: async () => 'explorer' };
+    const selected = { versionedKey: async () => 'explorer' };
     await expect(runtime.realize(selected as never, new MaterializedVisualizerCache({ materialize: first }))).resolves.toBe(implementation);
     await expect(runtime.realize(selected as never, new MaterializedVisualizerCache({ materialize: second }))).resolves.toBe(implementation);
     expect(first).toHaveBeenCalledOnce(); expect(second).toHaveBeenCalledOnce();
@@ -26,7 +26,7 @@ describe('MaterializedVisualizerRuntime', () => {
         format: 'ESModule',
         entrypoint: 'default',
       });
-    const visualizer = { key: vi.fn().mockResolvedValue('selected.visualizer') };
+    const visualizer = { versionedKey: vi.fn().mockResolvedValue('selected.visualizer') };
     const implementation = class Visualizer {};
     const importModule = vi.fn().mockResolvedValue({ default: implementation });
     const runtime = new MaterializedVisualizerRuntime(
@@ -48,8 +48,8 @@ describe('MaterializedVisualizerRuntime', () => {
     const constructor = class Selected {};
     const importer = vi.fn().mockResolvedValue({ default: constructor });
     const runtime = new MaterializedVisualizerRuntime(new MaterializedVisualizerCache({ materialize }), importer);
-    const first = { key: async () => 'first' };
-    const second = { key: async () => 'second' };
+    const first = { versionedKey: async () => 'first' };
+    const second = { versionedKey: async () => 'second' };
     expect(await Promise.all([runtime.realize(first as never), runtime.realize(second as never)])).toEqual([constructor, constructor]);
     expect(importer).toHaveBeenCalledTimes(1);
   });
@@ -59,7 +59,7 @@ describe('MaterializedVisualizerRuntime', () => {
     const constructor = class Selected {};
     const importer = vi.fn().mockRejectedValueOnce(new Error('unavailable selected module')).mockResolvedValue({ default: constructor });
     const runtime = new MaterializedVisualizerRuntime(cache, importer);
-    const selected = { key: async () => 'selected' };
+    const selected = { versionedKey: async () => 'selected' };
     await expect(runtime.realize(selected as never)).rejects.toThrow('unavailable selected module');
     await expect(runtime.realize(selected as never)).resolves.toBe(constructor);
   });
@@ -73,7 +73,7 @@ describe('MaterializedVisualizerRuntime', () => {
       }),
     });
     const runtime = new MaterializedVisualizerRuntime(cache, async () => ({}));
-    const visualizer = { key: vi.fn().mockResolvedValue('selected.visualizer') };
+    const visualizer = { versionedKey: vi.fn().mockResolvedValue('selected.visualizer') };
 
     await expect(runtime.realize(visualizer as never)).rejects.toThrow(
       "does not export 'default'",

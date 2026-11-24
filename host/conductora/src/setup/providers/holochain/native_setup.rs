@@ -167,7 +167,10 @@ mod tests {
     /// Real persistent conductor and packaged hApp; no test keystore, probes or external ingress.
     /// This is a mechanism test, not a packaged WebView/security-assurance test.
     #[tokio::test(flavor = "multi_thread")]
-    async fn native_only_keyless_personal_constitution_preserves_space() {
+    async fn native_only_personal_constitution_names_space_and_preserves_lineage() {
+        let started = std::time::Instant::now();
+        let checkpoint =
+            |phase: &str| eprintln!("[personal-space test] {phase}: {:?}", started.elapsed());
         let root = std::env::temp_dir().join(format!(
             "map-native-boundary-{}-{}",
             std::process::id(),
@@ -201,6 +204,7 @@ mod tests {
         assert!(conductor.app_websocket("map_holons".into(), AllowedOrigins::Any).await.is_err());
         assert!(HolochainRuntime::launch(vec_to_locked(vec![]), configuration()).await.is_err());
         let caller = initialize_app(&conductor, "map_holons", &happ).await.unwrap();
+        checkpoint("conductor ready");
         let author =
             conductor.native_administration().list_apps().await.unwrap()[0].agent_pub_key.clone();
         let initiator = Arc::new(TrustChannel::new(Arc::new(CountingTransport {
@@ -211,12 +215,19 @@ mod tests {
         let manager = holons_client::init_client_runtime(Some(initiator));
         let runtime = Runtime::new(Arc::new(RuntimeSession::new(manager.clone(), None)));
         let resource_root = resources.parent().unwrap();
+        assert!(
+            inspect_target(&runtime).await.is_err(),
+            "no Space has been provisioned or adopted"
+        );
+        assert_eq!(loads.load(Ordering::SeqCst), 0);
+        assert_eq!(discoveries.load(Ordering::SeqCst), 0);
         assert_eq!(
             prepare_core_schema(&runtime, resource_root, None).await.unwrap(),
             CoreSchemaStartup::Provisioned
         );
         assert_eq!(loads.load(Ordering::SeqCst), 1);
         assert_eq!(discoveries.load(Ordering::SeqCst), 1);
+        checkpoint("foundation provisioned");
         // Open does not inspect or replay import files. A missing dependency is
         // resolved by its consumer, not by revalidating the saved foundation.
         prepare_space_imports(
@@ -227,14 +238,17 @@ mod tests {
         )
         .await
         .unwrap();
-        assert!(inspect_target(&runtime).await.is_err());
+        // Agent Spaces is part of bootstrap; observing the unclaimed Space
+        // does not depend on importing the application definitions.
+        let before_imports = inspect_target(&runtime).await.unwrap();
+        assert_eq!(before_imports.sovereignty, SovereigntyObservation::NoAssociationObserved);
         assert_eq!(loads.load(Ordering::SeqCst), 1);
         prepare_space_imports(&runtime, resource_root, CoreSchemaStartup::Provisioned, None)
             .await
             .unwrap();
-        assert_eq!(loads.load(Ordering::SeqCst), 3);
+        assert_eq!(loads.load(Ordering::SeqCst), 2, "bootstrap plus Space Navigator import");
         let target = inspect_target(&runtime).await.unwrap();
-        assert_eq!(target.sovereignty, SovereigntyObservation::NoAssociationObserved);
+        assert_eq!(target, before_imports, "application imports preserve Space and sovereignty");
         let id = target.space;
         assert!(
             map_commands_runtime::application_launch::select_application_launch(
@@ -257,7 +271,31 @@ mod tests {
             )
             .unwrap()
             .holon_id();
-        runtime.session().archive_transaction(&tx).unwrap();
+        let staged_agent = holons_core::agent_spaces::stage_personal_agent(
+            &context,
+            PersonalName {
+                last_name: "Agent-only fixture".into(),
+                first_name: None,
+                middle_name: None,
+            },
+        )
+        .unwrap();
+        assert_eq!(staged_agent.key().unwrap(), Some("Agent-only fixture".into()));
+        assert_eq!(
+            context.staged_references().unwrap().len(),
+            1,
+            "generic Agent staging must not stage a Space rename"
+        );
+        assert_eq!(
+            context
+                .lookup()
+                .get_saved_holon_by_key(&"MAP.CoreSchemaSpace".into())
+                .unwrap()
+                .holon_id(),
+            id
+        );
+        runtime.session().dispose_transaction(&tx).await.unwrap();
+        checkpoint("generic Agent staging verified");
         drop(context);
         let baseline = loads.load(Ordering::SeqCst);
         // Create in the same runtime that provisioned the foundation, matching Welcome.
@@ -281,10 +319,12 @@ mod tests {
         let outcome = outcome.unwrap();
         assert!(competing.is_err(), "a concurrent Welcome request must not stage another Agent");
         assert_eq!(outcome, ConstitutionOutcome::Complete);
+        checkpoint("personal identities committed");
         // This runtime observed an empty inverse before Commit. Welcome must
         // now observe saved membership instead of reusing that cached absence.
         let after_creation = inspect_target(&runtime).await.unwrap();
-        assert_eq!(after_creation.space, id);
+        let personal_space_id = after_creation.space.clone();
+        assert_ne!(personal_space_id, id);
         assert_eq!(
             discoveries.load(Ordering::SeqCst),
             1,
@@ -293,8 +333,54 @@ mod tests {
         assert_eq!(after_creation.sovereignty, SovereigntyObservation::AssociationPresent);
         let verify_tx = runtime.session().begin_transaction().await.unwrap();
         let verify_context = runtime.session().get_transaction(&verify_tx).unwrap();
-        let space = verify_context.discover_local_holon_space().unwrap().unwrap();
-        assert_eq!(space.holon_id().unwrap(), id);
+        let designated_space = verify_context.discover_local_holon_space().unwrap().unwrap();
+        assert_eq!(designated_space.holon_id().unwrap(), id);
+        let space = holons_core::agent_spaces::current_personal_space(&verify_context).unwrap();
+        assert_eq!(space.holon_id().unwrap(), personal_space_id);
+        let owns = space
+            .related_holons_with_hint(
+                CoreRelationshipTypeName::Owns,
+                holons_core::RelationshipReadHint::RequireFresh,
+            )
+            .unwrap();
+        assert!(
+            owns.read()
+                .unwrap()
+                .get_members()
+                .iter()
+                .any(|member| member.holon_id().unwrap() == descriptor_id),
+            "the personal Space must retain access to its foundation contents"
+        );
+        assert_eq!(space.key().unwrap(), Some("Alex Example's Personal Space".into()));
+        for (relationship, expected) in [("AffordsDancer", 1), ("OffersTheme", 3)] {
+            assert_eq!(
+                space
+                    .related_holons_with_hint(
+                        relationship,
+                        holons_core::RelationshipReadHint::RequireFresh
+                    )
+                    .unwrap()
+                    .read()
+                    .unwrap()
+                    .get_members()
+                    .len(),
+                expected
+            );
+        }
+        for property in [
+            type_names::CorePropertyTypeName::HolonSpaceName,
+            type_names::CorePropertyTypeName::DisplayName,
+        ] {
+            assert_eq!(
+                space.property_value(property).unwrap(),
+                Some("Alex Example's Personal Space".to_base_value())
+            );
+        }
+        let current = holons_core::SmartReference::new_from_id(
+            verify_context.space_read_handle(),
+            personal_space_id.clone(),
+        );
+        assert_eq!(current.lineage_root_id().unwrap(), id);
         let owners = space
             .related_holons_with_hint(
                 AgentSpaceRelationshipTypeName::IsInteriorOf,
@@ -307,7 +393,17 @@ mod tests {
             owners.get_members()[0].clone()
         };
         let created_id = person.holon_id().unwrap();
-        assert_eq!(person.key().unwrap(), None);
+        assert_eq!(
+            holons_core::dahn::PersonalPreferences::for_context(&verify_context)
+                .unwrap()
+                .agent
+                .unwrap()
+                .holon_id()
+                .unwrap(),
+            created_id,
+            "personal configuration authority follows the named Space version"
+        );
+        assert_eq!(person.key().unwrap(), Some("Example.Alex".into()));
         assert_eq!(
             person.property_value(AgentSpacePropertyTypeName::LastName).unwrap(),
             Some("Example".to_base_value())
@@ -324,10 +420,18 @@ mod tests {
             type_names::ToRelationshipName::to_relationship_name(CoreRelationshipTypeName::OwnedBy),
         ] {
             let related = person
-                .related_holons_with_hint(name, holons_core::RelationshipReadHint::RequireFresh)
+                .related_holons_with_hint(&name, holons_core::RelationshipReadHint::RequireFresh)
                 .unwrap();
             assert_eq!(related.read().unwrap().get_members().len(), 1);
-            assert_eq!(related.read().unwrap().get_members()[0].holon_id().unwrap(), id);
+            let expected = if name
+                == type_names::ToRelationshipName::to_relationship_name(
+                    AgentSpaceRelationshipTypeName::HasInterior,
+                ) {
+                &personal_space_id
+            } else {
+                &id
+            };
+            assert_eq!(&related.read().unwrap().get_members()[0].holon_id().unwrap(), expected);
         }
         assert_eq!(person.holon_descriptor().unwrap().holon().holon_id().unwrap(), descriptor_id);
         runtime.session().archive_transaction(&verify_tx).unwrap();
@@ -338,9 +442,10 @@ mod tests {
         )
         .await
         .unwrap();
-        assert_eq!(launch.space, id);
+        assert_eq!(launch.space, personal_space_id);
         assert_eq!(launch.agent, Some(created_id.clone()));
         assert!(launch.home.is_some());
+        checkpoint("named Space and Navigator verified");
         assert_eq!(loads.load(Ordering::SeqCst), baseline, "Navigator launch does not import");
         assert_eq!(discoveries.load(Ordering::SeqCst), 1, "Navigator reuses adopted Space");
 
@@ -352,6 +457,161 @@ mod tests {
             .await
             .is_err());
         assert_eq!(loads.load(Ordering::SeqCst), baseline);
+        // Match the reviewed-file SDK path: prepare, then invoke on the named
+        // saved Space rather than the infrastructure's adopted root version.
+        let load_tx = runtime.session().begin_transaction().await.unwrap();
+        let load_context = runtime.session().get_transaction(&load_tx).unwrap();
+        let named_space = holons_core::agent_spaces::current_personal_space(&load_context).unwrap();
+        use holons_core::WritableHolon;
+        use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
+        use map_commands_runtime::ExecutionPolicy;
+        let prepared = runtime
+            .execute_command(
+                MapCommand::Transaction(TransactionCommand {
+                    context: load_context.clone(),
+                    action: TransactionAction::PrepareHolons {
+                        content_set: core_types::ContentSet {
+                            files_to_load: vec![core_types::FileData {
+                                filename: "book-person-inverse.json".into(),
+                                raw_contents: std::fs::read_to_string(resources.join(
+                                    "../../../generated/json-imports/test/book-person-inverse.json",
+                                ))
+                                .unwrap(),
+                            }],
+                        },
+                    },
+                }),
+                ExecutionPolicy::default(),
+            )
+            .await
+            .unwrap();
+        let MapResult::Reference(prepared) = prepared else { panic!("prepared load set") };
+        let descriptor = load_context
+            .lookup()
+            .get_saved_holon_by_key(&"DanceInvocation.HolonType".into())
+            .unwrap();
+        let mut invocation = load_context.mutation().new_holon(None).unwrap();
+        invocation.with_descriptor(descriptor.into()).unwrap();
+        invocation.with_property_value("DanceName", "LoadHolons").unwrap();
+        invocation.add_related_holons("AffordingHolon", vec![named_space]).unwrap();
+        invocation.add_related_holons("Request", vec![prepared]).unwrap();
+        let invocation = holons_core::dances::DanceInvocation::new(invocation.into()).unwrap();
+        let response = runtime
+            .execute_command(
+                MapCommand::Transaction(TransactionCommand {
+                    context: load_context.clone(),
+                    action: TransactionAction::DanceV2 { invocation },
+                }),
+                ExecutionPolicy::default(),
+            )
+            .await
+            .expect("reviewed import must be afforded by the named personal Space");
+        let MapResult::Reference(response) = response else { panic!("load response") };
+        assert_eq!(
+            response.property_value("LoadCommitStatus").unwrap(),
+            Some("Complete".to_base_value())
+        );
+        let inspector_tx = runtime.session().begin_transaction().await.unwrap();
+        let inspector = runtime.session().get_transaction(&inspector_tx).unwrap();
+        let saved = |key: &str| -> holons_core::HolonReference {
+            inspector.lookup().get_saved_holon_by_key(&key.into()).unwrap().into()
+        };
+        let selected = holons_core::dahn::select_visualizer(
+            &load_context,
+            holons_core::dahn::contract::VisualizerSelectionRequest {
+                subject: response.clone(),
+                owner: holons_core::dahn::contract::VisualizerOwner::Visualizer(saved(
+                    "PathInspector.RootedNavigationVisualizer",
+                )),
+                slot: saved("PathInspector.RootNodeSlot"),
+                theme: saved("Demo1.DeepOceanTheme"),
+                requested_kind: holons_core::dahn::contract::VisualizerKind::Node,
+            },
+        )
+        .expect("committed response selection must remain available");
+        let blocked_composition = runtime
+            .execute_command(
+                MapCommand::Transaction(TransactionCommand {
+                    context: load_context.clone(),
+                    action: TransactionAction::ResolveComposition {
+                        request: holons_core::dahn::composition::CompositionRequest {
+                            owner: selected.selected,
+                            subject: response.clone(),
+                            theme: saved("Demo1.DeepOceanTheme"),
+                            demand_slot: None,
+                            collection_source: None,
+                        },
+                    },
+                }),
+                ExecutionPolicy::default(),
+            )
+            .await
+            .expect_err("a new metadata query must not run in the committed loader");
+        assert!(matches!(blocked_composition, HolonError::TransactionAlreadyCommitted { .. }));
+        let types = response.related_holons("DescribedBy").unwrap();
+        let types = types.read().unwrap().get_members().clone();
+        assert_eq!(types.len(), 1);
+        let mut witness = inspector.mutation().new_holon(None).unwrap();
+        witness.with_descriptor(types[0].clone()).unwrap();
+        let response_schema = response.effective_descriptor().unwrap();
+        response_schema.available_singular_relationships(&response).unwrap();
+        response_schema.available_plural_relationships(&response).unwrap();
+        response_schema.afforded_dances().unwrap();
+        let selected = holons_core::dahn::select_visualizer(
+            &load_context,
+            holons_core::dahn::contract::VisualizerSelectionRequest {
+                subject: response.clone(),
+                owner: holons_core::dahn::contract::VisualizerOwner::Visualizer(saved(
+                    "PathInspector.RootedNavigationVisualizer",
+                )),
+                slot: saved("PathInspector.RootNodeSlot"),
+                theme: saved("Demo1.DeepOceanTheme"),
+                requested_kind: holons_core::dahn::contract::VisualizerKind::Node,
+            },
+        )
+        .unwrap();
+        for _ in 0..2 {
+            let composition = runtime.execute_command(
+                MapCommand::Transaction(TransactionCommand {
+                    context: inspector.clone(),
+                    action: TransactionAction::ResolveComposition {
+                        request: holons_core::dahn::composition::CompositionRequest {
+                            owner: selected.selected.clone(),
+                            subject: witness.clone().into(),
+                            theme: saved("Demo1.DeepOceanTheme"),
+                            demand_slot: None,
+                            collection_source: None,
+                        },
+                    },
+                }), ExecutionPolicy::default(),
+            ).await.expect("initial inspection and retry query metadata through the presentation transaction");
+            let MapResult::ResolvedComposition(composition) = composition else {
+                panic!("resolved composition")
+            };
+            assert!(composition
+                .data
+                .subject_properties
+                .iter()
+                .any(|property| property.name == "LoadCommitStatus"));
+            assert_eq!(
+                response.property_value("LoadCommitStatus").unwrap(),
+                Some("Complete".to_base_value())
+            );
+            assert!(!load_context.is_open());
+        }
+        runtime.session().archive_transaction(&inspector_tx).unwrap();
+        drop(inspector);
+        runtime.session().archive_transaction(&load_tx).unwrap();
+        let loaded_read_tx = runtime.session().begin_transaction().await.unwrap();
+        let loaded_read = runtime.session().get_transaction(&loaded_read_tx).unwrap();
+        loaded_read
+            .lookup()
+            .get_saved_holon_by_key(&"BookAuthorInverseSchema".into())
+            .expect("reviewed import must be visible through a fresh transaction");
+        runtime.session().archive_transaction(&loaded_read_tx).unwrap();
+        drop(loaded_read);
+        checkpoint("reviewed import on named Space verified");
+        drop(load_context);
         drop(runtime);
         drop(manager);
         conductor.shutdown().await.unwrap();
@@ -401,16 +661,35 @@ mod tests {
             .await
             .unwrap();
         let reopened = inspect_target(&runtime).await.unwrap();
-        assert_eq!(reopened.space, id);
+        assert_eq!(reopened.space, personal_space_id);
         assert_eq!(
             discoveries.load(Ordering::SeqCst),
             2,
             "one guest discovery per cold host runtime"
         );
         assert_eq!(reopened.sovereignty, SovereigntyObservation::AssociationPresent);
-        assert!(!crate::welcome_lifecycle::blockers(&reopened).is_empty());
+        checkpoint("first cold restart verified");
+        assert!(!welcome::lifecycle::blockers(&reopened).is_empty());
         let tx = runtime.session().begin_transaction().await.unwrap();
         let context = runtime.session().get_transaction(&tx).unwrap();
+        let reopened_space = holons_core::agent_spaces::current_personal_space(&context).unwrap();
+        assert_eq!(reopened_space.key().unwrap(), Some("Alex Example's Personal Space".into()));
+        let reopened_owns = reopened_space
+            .related_holons_with_hint(
+                CoreRelationshipTypeName::Owns,
+                holons_core::RelationshipReadHint::RequireFresh,
+            )
+            .unwrap();
+        assert!(reopened_owns
+            .read()
+            .unwrap()
+            .get_members()
+            .iter()
+            .any(|member| member.holon_id().unwrap() == descriptor_id));
+        assert_eq!(
+            context.lookup().get_saved_holon_by_key(&"Example.Alex".into()).unwrap().holon_id(),
+            created_id
+        );
         assert_eq!(
             context
                 .lookup()
@@ -437,7 +716,7 @@ mod tests {
         std::fs::write(destination.join("manifest.json"), serde_json::to_vec(&manifest).unwrap())
             .unwrap();
         assert!(prepare_core_schema(&runtime, &incompatible, None).await.is_err());
-        assert_eq!(inspect_target(&runtime).await.unwrap().space, id);
+        assert_eq!(inspect_target(&runtime).await.unwrap().space, personal_space_id);
         assert_eq!(
             loads.load(Ordering::SeqCst),
             baseline,
@@ -478,9 +757,10 @@ mod tests {
             author
         );
         let observed = inspect_target(&reopened_runtime).await.unwrap();
-        assert_eq!(observed.space, id);
+        assert_eq!(observed.space, personal_space_id);
         assert_eq!(discoveries.load(Ordering::SeqCst), 3, "warm status adds no guest discovery");
         assert_eq!(observed.sovereignty, SovereigntyObservation::AssociationPresent);
+        checkpoint("second cold restart verified");
         // A new backend admission object after restart must also refuse constitution.
         assert!(PersonalConstitution::default()
             .submit(
@@ -491,8 +771,10 @@ mod tests {
             .is_err());
         let tx = reopened_runtime.session().begin_transaction().await.unwrap();
         let context = reopened_runtime.session().get_transaction(&tx).unwrap();
-        let retained_space = context.discover_local_holon_space().unwrap().unwrap();
-        assert_eq!(retained_space.holon_id().unwrap(), id);
+        let retained_designation = context.discover_local_holon_space().unwrap().unwrap();
+        assert_eq!(retained_designation.holon_id().unwrap(), id);
+        let retained_space = holons_core::agent_spaces::current_personal_space(&context).unwrap();
+        assert_eq!(retained_space.holon_id().unwrap(), personal_space_id);
         let association = retained_space
             .related_holons_with_hint(
                 AgentSpaceRelationshipTypeName::IsInteriorOf,
@@ -501,7 +783,7 @@ mod tests {
             .unwrap();
         let retained_person = association.read().unwrap().get_members()[0].clone();
         assert_eq!(retained_person.holon_id().unwrap(), created_id);
-        assert_eq!(retained_person.key().unwrap(), None);
+        assert_eq!(retained_person.key().unwrap(), Some("Example.Alex".into()));
         assert_eq!(
             retained_person.property_value(AgentSpacePropertyTypeName::LastName).unwrap(),
             Some("Example".to_base_value())

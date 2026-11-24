@@ -839,6 +839,50 @@ impl HolonServiceApi for ClientHolonService {
         ))
     }
 
+    fn resolve_composition_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        request: holons_core::dahn::composition::CompositionRequest,
+    ) -> Result<HolonReference, HolonError> {
+        // Shared Rust reconstructs the guest-established answer. A covered demand
+        // needs neither another authoritative evaluation nor another guest round trip.
+        if let Some(registry) = context.visualizer_evaluations() {
+            let revision = registry.revision()?;
+            if let Some(result) = registry.acquire(context, &request)? {
+                let projection = result.into_projection(context)?;
+                registry.check_revision(revision)?;
+                return Ok(projection);
+            }
+        }
+        let invocation =
+            holons_core::dances::implementations::resolve_composition::invocation(context, request)
+                .map_err(|error| {
+                    HolonError::InvalidState(format!(
+                        "Constructing composition invocation: {error}"
+                    ))
+                })?;
+        let response =
+            run_future_synchronously(async move { context.initiate_invocation(invocation).await })
+                .map_err(|error| {
+                    HolonError::InvalidState(format!("Executing composition invocation: {error}"))
+                })?;
+        if !matches!(response, HolonReference::Transient(_)) {
+            return Err(HolonError::InvalidParameter(
+                "Composition response must be transient".into(),
+            ));
+        }
+        let bodies = response
+            .related_holons(type_names::CoreRelationshipTypeName::ResponseBody)?
+            .read()
+            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+            .get_members()
+            .clone();
+        match bodies.as_slice() {
+            [body] => Ok(body.clone()),
+            _ => Err(HolonError::InvalidParameter("Expected one composition response body".into())),
+        }
+    }
+
     fn load_theme_internal(
         &self,
         context: &Arc<TransactionContext>,

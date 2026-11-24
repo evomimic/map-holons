@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
-import Ajv, { ValidateFunction, ErrorObject } from 'ajv';
+import type { ValidateFunction, ErrorObject } from 'ajv';
+import validateImport, { schemaJson } from './generated/bootstrap-import-validator.mjs';
 
 export interface ValidationResult {
   valid: boolean;
@@ -15,28 +16,14 @@ export interface ValidationResult {
   providedIn: 'root'
 })
 export class SchemaValidatorService {
-  private ajv: Ajv;
   private validators: Map<string, ValidateFunction> = new Map();
 
-  constructor() {
-    this.ajv = new Ajv({ 
-      code: { esm: true },
-      allErrors: true, 
-      strict: false 
-    });
-  }
-
-  /**
-   * Compile and cache a schema validator
-   */
-  compileSchema(schemaName: string, schema: object): void {
-    if (!this.validators.has(schemaName)) {
-        console.debug(`Compiling schema: ${schemaName}`);
-        const validate = this.ajv.compile(schema);
-        this.validators.set(schemaName, validate);
-    } else {
-        console.debug(`schema already compiled: ${schemaName}`);
+  /** Register the build-time validator only for its matching schema snapshot. */
+  registerSchema(schemaName: string, schema: object): void {
+    if (JSON.stringify(schema) !== schemaJson) {
+      throw new Error('Import schema does not match the packaged validator. Rebuild MAP with the current schema.');
     }
+    this.validators.set(schemaName, validateImport);
   }
 
   /**
@@ -48,7 +35,7 @@ export class SchemaValidatorService {
     if (!validator) {
       return {
         valid: false,
-        parseError: `Schema '${schemaName}' not found. Please compile it first.`
+        parseError: `Schema '${schemaName}' not found. Please register it first.`
       };
     }
 
