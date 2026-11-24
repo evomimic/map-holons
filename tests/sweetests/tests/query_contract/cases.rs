@@ -316,7 +316,9 @@ async fn constrained_literal_errors(
     // The empty collection must not hide an invalid authored literal at the wire boundary.
     let invocation =
         query_dance_invocation(context, definition, Some((book_type.clone(), vec![])), vec![]);
-    let error = query_dance_error(runtime, context, invocation).await;
+    let error =
+        query_dance_error("constrained literal through QueryDance", runtime, context, invocation)
+            .await;
     assert_eq!(error, direct, "QueryDance must preserve every constraint error field");
 }
 
@@ -349,9 +351,11 @@ async fn template_literal_operands(runtime: &Runtime, context: &Arc<TransactionC
         let filter = authoring::new_filter(context, predicate.into()).unwrap();
         query(context, "TemplateLiteral", filter.into())
     };
-    for (label, operator, declared, source) in [
-        ("matching template", EqualsOperator, &template, "{0}"),
-        ("matching template fragment", ContainsOperator, &string, "{0"),
+    for (label, operator, declared, source, expected) in [
+        ("matching template", EqualsOperator, &template, "{0}", vec![rule.clone()]),
+        ("non-matching template", EqualsOperator, &template, "{1}", vec![]),
+        ("matching template fragment", ContainsOperator, &string, "{0", vec![rule.clone()]),
+        ("non-matching template fragment", ContainsOperator, &string, "}}x", vec![]),
     ] {
         dance(
             label,
@@ -360,18 +364,22 @@ async fn template_literal_operands(runtime: &Runtime, context: &Arc<TransactionC
             filter(operator, declared, source),
             input(),
             vec![],
-            Expected::Members(vec![rule.clone()]),
+            Expected::Members(expected),
         )
         .await;
     }
-    for operator in [EqualsOperator, LessThanOperator] {
+    let syntax_constraint =
+        saved("ValidSyntax.PositionalStringTemplateSyntaxConstraint").reference_id_string();
+    for (label, operator) in
+        [("Equals rejects $0", EqualsOperator), ("LessThan rejects $0", LessThanOperator)]
+    {
         let definition = filter(operator, &template, "$0");
         let invocation = query_dance_invocation(context, definition, input(), vec![]);
-        let error = query_dance_error(runtime, context, invocation).await;
+        let error = query_dance_error(label, runtime, context, invocation).await;
         assert!(
-            matches!(&error, HolonError::ValueConstraintViolation { code, .. }
-            if code == "PositionalStringTemplateSyntaxInvalid"),
-            "{error:?}"
+            matches!(&error, HolonError::ValueConstraintViolation { code, constraint, .. }
+                if code == "PositionalStringTemplateSyntaxInvalid" && constraint == &syntax_constraint),
+            "{label}: {error:?}"
         );
     }
 }
@@ -460,12 +468,13 @@ async fn rejects(
     invocation: DanceInvocation,
     expected: HolonErrorKind,
 ) {
-    let error = query_dance_error(runtime, context, invocation).await;
+    let error = query_dance_error(label, runtime, context, invocation).await;
     assert_eq!(HolonErrorKind::from(&error), expected, "{label}: {error:?}");
     tracing::info!(case = label, "query contract passed");
 }
 
 async fn query_dance_error(
+    label: &str,
     runtime: &Runtime,
     context: &Arc<TransactionContext>,
     invocation: DanceInvocation,
@@ -479,5 +488,5 @@ async fn query_dance_error(
             ExecutionPolicy::default(),
         )
         .await
-        .expect_err("QueryDance should reject the invocation")
+        .expect_err(label)
 }
