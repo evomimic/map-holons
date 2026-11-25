@@ -32,7 +32,7 @@ value MapStringValueType.StringValueType {
 
 instance ValidSyntax.PositionalStringTemplateSyntaxConstraint {
   type PositionalStringTemplateSyntaxConstraint.ConstraintType
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.11"
   ConstraintName "ValidSyntax"
 }
 

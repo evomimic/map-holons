@@ -1216,12 +1216,12 @@ mod tests {
         use crate::tdl_compiler::compile_input_string;
 
         let source = r#"
-schema "MAP Core Schema-v0.0.7" {
+schema "MAP Core Schema-v0.0.11" {
 }
 
 instance EscapedTemplate.FormatRule {
   type FormatRule.KeyRuleType
-  rule_of "MAP Core Schema-v0.0.7"
+  rule_of "MAP Core Schema-v0.0.11"
   TypeName "EscapedTemplate"
   TemplateString "{{ }} \\[ \\] \\\\ \\$0 {0}"
   relationships {

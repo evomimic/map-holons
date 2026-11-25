@@ -63,7 +63,7 @@
     },
     {
       "path": "imports/core/concrete-value-types.json",
-      "sha256": "e7c1d587789b687edb45164fe900e69db03634365d0e60c6017a0ecff215ccfc"
+      "sha256": "248a0e677071aacb3fb5abe947e7e33e8caf115ce6b64340f202fdc9077ff050"
     },
     {
       "path": "imports/core/keyrules.json",

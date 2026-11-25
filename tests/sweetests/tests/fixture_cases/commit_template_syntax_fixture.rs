@@ -15,7 +15,7 @@ pub fn commit_template_syntax_fixture() -> Result<DancesTestCase, HolonError> {
     );
     let mut lookup = |key| saved(&fixture_context, &mut test_case, &mut fixture_holons, key);
     let format_rule = lookup("FormatRule.KeyRuleType")?;
-    let schema = lookup("MAP Core Schema-v0.0.7")?;
+    let schema = lookup("MAP Core Schema-v0.0.11")?;
     let parameter = lookup("HolonSpaceName.PropertyType")?;
     let constraint = lookup("ValidSyntax.PositionalStringTemplateSyntaxConstraint")?;
     let constraint_type = lookup("PositionalStringTemplateSyntaxConstraint.ConstraintType")?;
