@@ -101,3 +101,17 @@ holon UniqueItemsConstraint.ConstraintType {
     ApplicableToDescriptorTypes -> ValueArrayValueType.ValueType
   }
 }
+
+holon PositionalStringTemplateSyntaxConstraint.ConstraintType {
+  type MetaConstraintType.MetaHolonType
+  extends ConstraintType.HolonType
+  header {
+    description: "Requires a stored string to follow the positional string template grammar."
+    display_name: "Positional String Template Syntax Constraint"
+    display_plural: "Positional String Template Syntax Constraints"
+    plural: "PositionalStringTemplateSyntaxConstraints"
+  }
+  relationships {
+    ApplicableToDescriptorTypes -> StringValueType.ValueType
+  }
+}

@@ -1,5 +1,5 @@
 use super::{Bound, IntegerInterval, MeasureBounds, ScalarConstraintParameters};
-use base_types::BaseValue;
+use base_types::{BaseValue, PositionalStringTemplate, TemplateSyntaxError};
 use std::fmt;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -9,6 +9,8 @@ pub const STRING_LENGTH_OUT_OF_RANGE: &str = "StringLengthOutOfRange";
 pub const BYTES_LENGTH_OUT_OF_RANGE: &str = "BytesLengthOutOfRange";
 /// Stable semantic code for a violated signed numeric-range constraint.
 pub const NUMERIC_VALUE_OUT_OF_RANGE: &str = "NumericValueOutOfRange";
+/// Stable semantic code for malformed positional string template source.
+pub const POSITIONAL_STRING_TEMPLATE_SYNTAX_INVALID: &str = "PositionalStringTemplateSyntaxInvalid";
 
 /// A decline leaves representation diagnosis to the consumer; it is never a pass.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -34,27 +36,59 @@ impl fmt::Display for ConstraintMeasure {
     }
 }
 
+/// Authored bounds and their measurement units.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ConstraintBounds {
+    /// Extended grapheme cluster bounds.
+    StringLength(MeasureBounds),
+    /// Byte length bounds.
+    BytesLength(MeasureBounds),
+    /// Signed integer bounds.
+    NumericRange(IntegerInterval),
+}
+
+/// Facts produced by the evaluator for a violated constraint.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ConstraintViolationEvidence {
+    /// A measured value outside its authored bounds.
+    Measured {
+        /// Observed measure.
+        measure: ConstraintMeasure,
+        /// Required interval.
+        bounds: ConstraintBounds,
+    },
+    /// Parser failure with its reason and decoded UTF-8 byte span.
+    TemplateSyntax(TemplateSyntaxError),
+}
+
 /// Pure evaluation evidence. Consumers attach subject and descriptor provenance.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ConstraintViolationDetail {
+    /// Stable semantic identifier.
     pub code: &'static str,
-    pub measure: ConstraintMeasure,
-    pub bounds: ScalarConstraintParameters,
+    /// Details specific to the evaluation failure.
+    pub evidence: ConstraintViolationEvidence,
 }
 
 impl fmt::Display for ConstraintViolationDetail {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.bounds {
-            ScalarConstraintParameters::StringLength(bounds) => {
-                write!(f, "measured {} graphemes; required ", self.measure)?;
+        let (measure, bounds) = match &self.evidence {
+            ConstraintViolationEvidence::Measured { measure, bounds } => (measure, bounds),
+            ConstraintViolationEvidence::TemplateSyntax(error) => {
+                return write!(f, "invalid positional template syntax: {error}");
+            }
+        };
+        match bounds {
+            ConstraintBounds::StringLength(bounds) => {
+                write!(f, "measured {measure} graphemes; required ")?;
                 display_measure_interval(f, bounds)
             }
-            ScalarConstraintParameters::BytesLength(bounds) => {
-                write!(f, "measured {} bytes; required ", self.measure)?;
+            ConstraintBounds::BytesLength(bounds) => {
+                write!(f, "measured {measure} bytes; required ")?;
                 display_measure_interval(f, bounds)
             }
-            ScalarConstraintParameters::NumericRange(bounds) => {
-                write!(f, "measured {}; required ", self.measure)?;
+            ConstraintBounds::NumericRange(bounds) => {
+                write!(f, "measured {measure}; required ")?;
                 display_interval(f, bounds.minimum, bounds.maximum)
             }
         }
@@ -112,12 +146,7 @@ fn evaluate_string_length(
         return ConstraintEvaluationOutcome::IncompatibleValueKind;
     };
     let measured = value.0.graphemes(true).count() as u64;
-    evaluate_measure(
-        bounds,
-        measured,
-        STRING_LENGTH_OUT_OF_RANGE,
-        ScalarConstraintParameters::StringLength,
-    )
+    evaluate_measure(bounds, measured, STRING_LENGTH_OUT_OF_RANGE, ConstraintBounds::StringLength)
 }
 
 /// Counts bytes only for the native byte representation.
@@ -129,7 +158,7 @@ fn evaluate_bytes_length(bounds: &MeasureBounds, value: &BaseValue) -> Constrain
         bounds,
         value.0.len() as u64,
         BYTES_LENGTH_OUT_OF_RANGE,
-        ScalarConstraintParameters::BytesLength,
+        ConstraintBounds::BytesLength,
     )
 }
 
@@ -137,15 +166,17 @@ fn evaluate_measure(
     bounds: &MeasureBounds,
     measured: u64,
     code: &'static str,
-    parameters: fn(MeasureBounds) -> ScalarConstraintParameters,
+    evidence_bounds: fn(MeasureBounds) -> ConstraintBounds,
 ) -> ConstraintEvaluationOutcome {
     if within_bounds(measured, &bounds.minimum, &bounds.maximum) {
         ConstraintEvaluationOutcome::Satisfied
     } else {
         ConstraintEvaluationOutcome::Violated(ConstraintViolationDetail {
             code,
-            measure: ConstraintMeasure::Length(measured),
-            bounds: parameters(*bounds),
+            evidence: ConstraintViolationEvidence::Measured {
+                measure: ConstraintMeasure::Length(measured),
+                bounds: evidence_bounds(*bounds),
+            },
         })
     }
 }
@@ -163,9 +194,24 @@ fn evaluate_numeric_range(
     } else {
         ConstraintEvaluationOutcome::Violated(ConstraintViolationDetail {
             code: NUMERIC_VALUE_OUT_OF_RANGE,
-            measure: ConstraintMeasure::Integer(value.0),
-            bounds: ScalarConstraintParameters::NumericRange(*bounds),
+            evidence: ConstraintViolationEvidence::Measured {
+                measure: ConstraintMeasure::Integer(value.0),
+                bounds: ConstraintBounds::NumericRange(*bounds),
+            },
         })
+    }
+}
+
+fn evaluate_template_syntax(value: &BaseValue) -> ConstraintEvaluationOutcome {
+    let BaseValue::StringValue(value) = value else {
+        return ConstraintEvaluationOutcome::IncompatibleValueKind;
+    };
+    match PositionalStringTemplate::validate_syntax(&value.0) {
+        Ok(()) => ConstraintEvaluationOutcome::Satisfied,
+        Err(error) => ConstraintEvaluationOutcome::Violated(ConstraintViolationDetail {
+            code: POSITIONAL_STRING_TEMPLATE_SYNTAX_INVALID,
+            evidence: ConstraintViolationEvidence::TemplateSyntax(error),
+        }),
     }
 }
 
@@ -176,6 +222,7 @@ impl ScalarConstraintParameters {
             Self::StringLength(bounds) => evaluate_string_length(bounds, value),
             Self::BytesLength(bounds) => evaluate_bytes_length(bounds, value),
             Self::NumericRange(bounds) => evaluate_numeric_range(bounds, value),
+            Self::PositionalStringTemplateSyntax => evaluate_template_syntax(value),
         }
     }
 }

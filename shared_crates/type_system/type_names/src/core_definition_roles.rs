@@ -51,6 +51,8 @@ pub enum CoreDefinitionRole {
     CardinalityConstraint,
     /// The `UniqueItemsConstraint.ConstraintType` role.
     UniqueItemsConstraint,
+    /// The `PositionalStringTemplateSyntaxConstraint.ConstraintType` role.
+    PositionalStringTemplateSyntaxConstraint,
     /// The `Schema.HolonType` role.
     Schema,
     /// The `Rule.HolonType` role.
@@ -99,6 +101,9 @@ impl CoreDefinitionRole {
             Self::ItemCountConstraint => "ItemCountConstraint.ConstraintType",
             Self::CardinalityConstraint => "CardinalityConstraint.ConstraintType",
             Self::UniqueItemsConstraint => "UniqueItemsConstraint.ConstraintType",
+            Self::PositionalStringTemplateSyntaxConstraint => {
+                "PositionalStringTemplateSyntaxConstraint.ConstraintType"
+            }
             Self::Schema => "Schema.HolonType",
             Self::Rule => "Rule.HolonType",
             Self::HolonValidationRule => "HolonValidationRule.HolonType",

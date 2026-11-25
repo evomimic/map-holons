@@ -70,6 +70,60 @@
       ]
     },
     {
+      "key": "ValidSyntax.PositionalStringTemplateSyntaxConstraint",
+      "type": "PositionalStringTemplateSyntaxConstraint.ConstraintType",
+      "properties": {
+        "ConstraintName": "ValidSyntax"
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.11"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PositionalStringTemplateValueType.MapStringValueType",
+      "type": "MetaStringValueType.MetaValueType",
+      "properties": {
+        "TypeName": "PositionalStringTemplateValueType",
+        "TypeNamePlural": "PositionalStringTemplateValueTypes",
+        "DisplayName": "Positional String Template Value Type",
+        "DisplayNamePlural": "Positional String Template Value Types",
+        "Description": "String value type for source that follows the positional string template grammar."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.11"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ValidSyntax.PositionalStringTemplateSyntaxConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "MapIntegerValueType.IntegerValueType",
       "type": "MetaIntegerValueType.MetaValueType",
       "properties": {

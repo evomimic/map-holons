@@ -1,8 +1,13 @@
-use base_types::{BaseValue, MapBoolean, MapBytes, MapEnumValue, MapInteger, MapString};
+use base_types::{
+    BaseValue, MapBoolean, MapBytes, MapEnumValue, MapInteger, MapString, PositionalStringTemplate,
+    TemplateSyntaxError, TemplateSyntaxErrorReason,
+};
 use holons_core::descriptors::value_constraints::{
-    Bound, ConstraintEvaluationOutcome as Outcome, ConstraintMeasure, ConstraintParameters,
-    IntegerInterval, MeasureBounds, ScalarConstraintFamily, ScalarConstraintParameters,
-    BYTES_LENGTH_OUT_OF_RANGE, NUMERIC_VALUE_OUT_OF_RANGE, STRING_LENGTH_OUT_OF_RANGE,
+    Bound, ConstraintBounds, ConstraintEvaluationOutcome as Outcome, ConstraintMeasure,
+    ConstraintParameters, ConstraintViolationDetail, ConstraintViolationEvidence, IntegerInterval,
+    MeasureBounds, ScalarConstraintFamily, ScalarConstraintParameters, BYTES_LENGTH_OUT_OF_RANGE,
+    NUMERIC_VALUE_OUT_OF_RANGE, POSITIONAL_STRING_TEMPLATE_SYNTAX_INVALID,
+    STRING_LENGTH_OUT_OF_RANGE,
 };
 use unicode_segmentation::{UnicodeSegmentation, UNICODE_VERSION};
 
@@ -24,7 +29,11 @@ fn assert_result(outcome: Outcome, satisfied: bool, code: &str, measure: Constra
         Outcome::Violated(detail) => {
             assert!(!satisfied, "{detail}");
             assert_eq!(detail.code, code);
-            assert_eq!(detail.measure, measure);
+            let ConstraintViolationEvidence::Measured { measure: actual, .. } = detail.evidence
+            else {
+                panic!("expected measured evidence");
+            };
+            assert_eq!(actual, measure);
         }
         Outcome::IncompatibleValueKind => panic!("compatible value was declined"),
     }
@@ -166,6 +175,7 @@ fn every_incompatible_native_variant_declines() {
             (0, ScalarConstraintParameters::StringLength(bounds).evaluate(value)),
             (1, ScalarConstraintParameters::NumericRange(numeric).evaluate(value)),
             (2, ScalarConstraintParameters::BytesLength(bounds).evaluate(value)),
+            (0, ScalarConstraintParameters::PositionalStringTemplateSyntax.evaluate(value)),
         ] {
             assert_eq!(
                 outcome,
@@ -177,6 +187,47 @@ fn every_incompatible_native_variant_declines() {
             );
         }
     }
+}
+
+#[test]
+fn template_syntax_evaluator_agrees_with_template_construction() {
+    let evaluator = ScalarConstraintParameters::PositionalStringTemplateSyntax;
+    for source in [
+        "",
+        "literal",
+        "{0}",
+        "{0}.[1].[2]",
+        "{0}[.{2}]",
+        "{99999999999999999999999}",
+        r"{{{0}}}\[\]\\\$0",
+        "$0",
+        "{01}",
+        "[.{1}[2]]",
+        "[]",
+        "a\0b",
+    ] {
+        let expected = match PositionalStringTemplate::parse(source) {
+            Ok(_) => Outcome::Satisfied,
+            Err(error) => Outcome::Violated(ConstraintViolationDetail {
+                code: POSITIONAL_STRING_TEMPLATE_SYNTAX_INVALID,
+                evidence: ConstraintViolationEvidence::TemplateSyntax(error),
+            }),
+        };
+        assert_eq!(evaluator.evaluate(&string(source)), expected, "template {source:?}");
+    }
+    let source = "«é»{0}[.{1}";
+    let error = PositionalStringTemplate::parse(source).unwrap_err();
+    assert_eq!(
+        error,
+        TemplateSyntaxError { span: 9..14, reason: TemplateSyntaxErrorReason::UnclosedSegment }
+    );
+    assert_eq!(
+        evaluator.evaluate(&string(source)),
+        Outcome::Violated(ConstraintViolationDetail {
+            code: POSITIONAL_STRING_TEMPLATE_SYNTAX_INVALID,
+            evidence: ConstraintViolationEvidence::TemplateSyntax(error),
+        })
+    );
 }
 
 #[test]
@@ -235,7 +286,13 @@ fn violation_details_display_signed_measures_and_open_bounds() {
             panic!("expected violation")
         };
         assert_eq!(detail.to_string(), expected);
-        assert_eq!(detail.bounds, ScalarConstraintParameters::NumericRange(bounds));
+        assert_eq!(
+            detail.evidence,
+            ConstraintViolationEvidence::Measured {
+                measure: ConstraintMeasure::Integer(value),
+                bounds: ConstraintBounds::NumericRange(bounds),
+            }
+        );
     }
     let bounds = MeasureBounds { minimum: bound(1, true), maximum: bound(2, false) };
     let Outcome::Violated(detail) =
@@ -259,6 +316,10 @@ fn only_scalar_configuration_produces_executable_parameters() {
             }),
             ScalarConstraintFamily::NumericRange,
         ),
+        (
+            ConstraintParameters::PositionalStringTemplateSyntax,
+            ScalarConstraintFamily::PositionalStringTemplateSyntax,
+        ),
     ] {
         assert_eq!(parameters.scalar_parameters().unwrap().family(), family);
     }
@@ -274,15 +335,17 @@ fn only_scalar_configuration_produces_executable_parameters() {
 #[test]
 fn length_diagnostics_include_units_and_the_natural_floor() {
     let bounds = MeasureBounds { minimum: None, maximum: bound(2, true) };
-    for (parameters, value, expected) in [
+    for (parameters, value, expected_bounds, expected) in [
         (
             ScalarConstraintParameters::StringLength(bounds),
             string("abc"),
+            ConstraintBounds::StringLength(bounds),
             "measured 3 graphemes; required [0, 2]",
         ),
         (
             ScalarConstraintParameters::BytesLength(bounds),
             BaseValue::BytesValue(MapBytes(vec![0; 3])),
+            ConstraintBounds::BytesLength(bounds),
             "measured 3 bytes; required [0, 2]",
         ),
     ] {
@@ -290,7 +353,13 @@ fn length_diagnostics_include_units_and_the_natural_floor() {
             panic!("expected violation")
         };
         assert_eq!(detail.to_string(), expected);
-        assert_eq!(detail.bounds, parameters);
+        assert_eq!(
+            detail.evidence,
+            ConstraintViolationEvidence::Measured {
+                measure: ConstraintMeasure::Length(3),
+                bounds: expected_bounds,
+            }
+        );
     }
 }
 
@@ -299,6 +368,7 @@ fn semantic_codes_keep_their_public_contract() {
     assert_eq!(STRING_LENGTH_OUT_OF_RANGE, "StringLengthOutOfRange");
     assert_eq!(BYTES_LENGTH_OUT_OF_RANGE, "BytesLengthOutOfRange");
     assert_eq!(NUMERIC_VALUE_OUT_OF_RANGE, "NumericValueOutOfRange");
+    assert_eq!(POSITIONAL_STRING_TEMPLATE_SYNTAX_INVALID, "PositionalStringTemplateSyntaxInvalid");
 }
 
 #[test]

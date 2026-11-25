@@ -41,6 +41,7 @@ fn all_fixtures_author_without_a_conductor() {
     commit_validation_fixture::commit_validation_fixture().unwrap();
     commit_scalar_constraints_fixture::commit_scalar_constraints_fixture().unwrap();
     commit_staged_scalar_fixture::commit_staged_scalar_fixture().unwrap();
+    commit_template_syntax_fixture::commit_template_syntax_fixture().unwrap();
     attachment_defaults_fixture::attachment_defaults_fixture().unwrap();
     delete_holon_fixture::delete_holon_fixture().unwrap();
     ergonomic_add_remove_properties_fixture::ergonomic_add_remove_properties_fixture().unwrap();

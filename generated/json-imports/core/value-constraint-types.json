@@ -266,6 +266,43 @@
           ]
         }
       ]
+    },
+    {
+      "key": "PositionalStringTemplateSyntaxConstraint.ConstraintType",
+      "type": "MetaConstraintType.MetaHolonType",
+      "properties": {
+        "TypeName": "PositionalStringTemplateSyntaxConstraint",
+        "TypeNamePlural": "PositionalStringTemplateSyntaxConstraints",
+        "DisplayName": "Positional String Template Syntax Constraint",
+        "DisplayNamePlural": "Positional String Template Syntax Constraints",
+        "Description": "Requires a stored string to follow the positional string template grammar."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ConstraintType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.11"
+            }
+          ]
+        },
+        {
+          "name": "ApplicableToDescriptorTypes",
+          "target": [
+            {
+              "$ref": "StringValueType.ValueType"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

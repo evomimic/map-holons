@@ -26,6 +26,7 @@ const BOUNDED: [&str; 4] = [
 ];
 const CARDINALITY: &str = "CardinalityConstraint.ConstraintType";
 const UNIQUE: &str = "UniqueItemsConstraint.ConstraintType";
+const TEMPLATE_SYNTAX: &str = "PositionalStringTemplateSyntaxConstraint.ConstraintType";
 
 fn fixture() -> Result<Fixture, HolonError> {
     add_constraint_definitions(Fixture::new()?)
@@ -42,7 +43,7 @@ fn add_constraint_definitions(mut fixture: Fixture) -> Result<Fixture, HolonErro
         CoreRelationshipTypeName::Extends,
         "HolonType.TypeDescriptor",
     )?;
-    for key in BOUNDED.into_iter().chain([CARDINALITY, UNIQUE]) {
+    for key in BOUNDED.into_iter().chain([CARDINALITY, UNIQUE, TEMPLATE_SYNTAX]) {
         fixture.node(key)?;
         fixture.link(key, CoreRelationshipTypeName::Extends, "ConstraintType.HolonType")?;
         fixture.link(
@@ -346,31 +347,64 @@ fn malformed_effective_state_cannot_remove_or_reattribute_an_inherited_constrain
 #[test]
 fn declaration_acceptance_does_not_enable_an_unsupported_subject_evaluator(
 ) -> Result<(), HolonError> {
-    let mut fixture = fixture_with_commit_roots()?;
-    let constraint = configured(&mut fixture, "Configured", UNIQUE)?;
-    fixture.link(
-        "StringValueType.ValueType",
-        CoreRelationshipTypeName::Constraints,
-        "Configured",
-    )?;
+    use holons_core::descriptors::value_constraints::{
+        interpret_constraint, ConstraintConfiguration, ConstraintInterpretation,
+        ConstraintParameters,
+    };
 
-    let mut collector = ValidationCollector::default();
-    assert!(fixture
-        .constraint_packages(fixture.diagnoses())?
-        .declarations()
-        .assess_constraint(&constraint, &mut collector)?);
-    assert_eq!(collector.observations().effective_constraint_count, 0);
-    assert!(collector.into_report().is_accepted());
-    let mut subject = fixture.staged_subject("configured-value")?;
-    subject.with_property_value("Title", "value")?;
-    subject.remove_property_value("Key")?;
-    let assessment = assess_commit_candidates(&fixture.context, std::slice::from_ref(&subject))?;
-    assert_eq!(assessment.observations.effective_constraint_count, 1);
-    assert_eq!(assessment.observations.constraint_declaration_count, 0);
-    assert!(assessment.report.violations.iter().any(|finding| matches!(
-        finding.kind,
-        CommitValidationViolationKind::UnsupportedConstraintType { .. }
-    )));
+    let extension = "Extension.PositionalStringTemplateSyntaxConstraint";
+    for (concrete_type, parameters) in [
+        (UNIQUE, ConstraintParameters::UniqueItems),
+        (extension, ConstraintParameters::PositionalStringTemplateSyntax),
+    ] {
+        let mut fixture = fixture_with_commit_roots()?;
+        if concrete_type == extension {
+            fixture.node(extension)?;
+            fixture.link(extension, CoreRelationshipTypeName::Extends, TEMPLATE_SYNTAX)?;
+            fixture.link(
+                extension,
+                CoreRelationshipTypeName::ApplicableToDescriptorTypes,
+                "StringValueType.ValueType",
+            )?;
+        }
+        let constraint = configured(&mut fixture, "Configured", concrete_type)?;
+        fixture.link(
+            "StringValueType.ValueType",
+            CoreRelationshipTypeName::Constraints,
+            "Configured",
+        )?;
+
+        let diagnosis = ExtendsLineageDiagnosis::assess(&fixture.nodes[concrete_type])?;
+        let authored = ConstraintConfiguration::acquire(&constraint)?;
+        assert_eq!(
+            interpret_constraint(diagnosis.valid_lineage().unwrap(), &authored),
+            ConstraintInterpretation::Parameters(parameters)
+        );
+
+        let mut collector = ValidationCollector::default();
+        assert!(fixture
+            .constraint_packages(fixture.diagnoses())?
+            .declarations()
+            .assess_constraint(&constraint, &mut collector)?);
+        assert_eq!(collector.observations().effective_constraint_count, 0);
+        assert!(collector.into_report().is_accepted());
+        let mut subject = fixture.staged_subject("configured-value")?;
+        subject.with_property_value("Title", "value")?;
+        subject.remove_property_value("Key")?;
+        let assessment =
+            assess_commit_candidates(&fixture.context, std::slice::from_ref(&subject))?;
+        assert_eq!(assessment.observations.effective_constraint_count, 1);
+        assert_eq!(assessment.observations.constraint_declaration_count, 0);
+        assert_eq!(assessment.observations.evaluated_value_constraint_count, 0);
+        assert!(assessment.report.violations.iter().any(|finding| matches!(
+            &finding.kind,
+            CommitValidationViolationKind::UnsupportedConstraintType {
+                constraint_identity,
+                constraint_type_identity,
+            } if constraint_identity == &constraint.reference_id_string()
+                && constraint_type_identity == &fixture.nodes[concrete_type].reference_id_string()
+        )), "{:?}", assessment.report.violations);
+    }
     Ok(())
 }
 

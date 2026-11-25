@@ -20,6 +20,8 @@ pub enum CoreValueTypeName {
     MapEnumValueType,
     MapIntegerValueType,
     MapStringValueType,
+    /// String ValueType for positional template source.
+    PositionalStringTemplateValueType,
     MapValueArrayType,
     StringValueType,
     ValueBoolean,
@@ -137,6 +139,13 @@ mod tests {
                 &CoreValueTypeName::StringValueType
             ),
             MapString("MapStringValueType.StringValueType".to_string())
+        );
+        assert_eq!(
+            value_type_descriptor_key(
+                &CoreValueTypeName::PositionalStringTemplateValueType.as_value_name(),
+                &CoreValueTypeName::MapStringValueType
+            ),
+            MapString("PositionalStringTemplateValueType.MapStringValueType".into())
         );
     }
 }

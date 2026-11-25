@@ -63,11 +63,11 @@
     },
     {
       "path": "imports/core/concrete-value-types.json",
-      "sha256": "2437f753c91f1cc5cc3cb00f906b596ece330cff50a1a1e47aae6daa9cc36b29"
+      "sha256": "248a0e677071aacb3fb5abe947e7e33e8caf115ce6b64340f202fdc9077ff050"
     },
     {
       "path": "imports/core/keyrules.json",
-      "sha256": "e51dc14c100d347d56e4b04b2b6c6b47b5e7c48931b9580fef981a5400c83e6e"
+      "sha256": "1cf456a273c992dc442cd2140cb227f69d3b62f867632d15fd4c27ab179e8e61"
     },
     {
       "path": "imports/core/loader-types.json",
@@ -79,7 +79,7 @@
     },
     {
       "path": "imports/core/property-types.json",
-      "sha256": "9dc204e9a801c935eb52dbf699a01d92be37218695c1b11cfd010685c95af999"
+      "sha256": "c33c98841fc45329020dd394ea9cefbce9c2754ef9721eae92b8e8baadc9fbcd"
     },
     {
       "path": "imports/core/relationship-types.json",
@@ -95,7 +95,7 @@
     },
     {
       "path": "imports/core/value-constraint-types.json",
-      "sha256": "c9df6eeee086534ea1ebdca879a1719a4461f87f3e8133e7671a0adbba8016da"
+      "sha256": "ec6668b8592595341d847315eafbe8fad39fc89f5b2a9623640a150ddbb18e1c"
     },
     {
       "path": "imports/validation/schema.json",
@@ -4488,6 +4488,14 @@
       "type": "FormatRule.KeyRuleType"
     },
     {
+      "key": "PositionalStringTemplateSyntaxConstraint.ConstraintType",
+      "type": "MetaConstraintType.MetaHolonType"
+    },
+    {
+      "key": "PositionalStringTemplateValueType.MapStringValueType",
+      "type": "MetaStringValueType.MetaValueType"
+    },
+    {
       "key": "PreparedSchema.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
@@ -5194,6 +5202,10 @@
     {
       "key": "UnsupportedActionTypeScript.VisualizerImplementation",
       "type": "VisualizerImplementation.HolonType"
+    },
+    {
+      "key": "ValidSyntax.PositionalStringTemplateSyntaxConstraint",
+      "type": "PositionalStringTemplateSyntaxConstraint.ConstraintType"
     },
     {
       "key": "Validate.OperatorType",

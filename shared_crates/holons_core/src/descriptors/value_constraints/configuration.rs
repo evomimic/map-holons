@@ -37,38 +37,74 @@ pub fn parse_constraint_configuration(
     family: ConstraintFamily,
     configuration: &ConstraintConfiguration,
 ) -> Result<ConstraintParameters, Vec<ConfigurationDiagnosis>> {
+    match family {
+        ConstraintFamily::UniqueItems => {
+            parse_presence_only("UniqueItemsConstraint", configuration)
+                .map(|()| ConstraintParameters::UniqueItems)
+        }
+        ConstraintFamily::PositionalStringTemplateSyntax => {
+            parse_presence_only("PositionalStringTemplateSyntaxConstraint", configuration)
+                .map(|()| ConstraintParameters::PositionalStringTemplateSyntax)
+        }
+        ConstraintFamily::Cardinality => parse_bounded(configuration, BoundsKind::Cardinality)
+            .and_then(|bounds| {
+                let minimum = bounds.minimum.ok_or_else(|| {
+                    vec![ConfigurationDiagnosis {
+                        message: "CardinalityConstraint requires Minimum.".into(),
+                    }]
+                })?;
+                Ok(ConstraintParameters::Cardinality {
+                    minimum: minimum.value as u64,
+                    maximum: bounds.maximum.map(|bound| bound.value as u64),
+                })
+            }),
+        ConstraintFamily::NumericRange => {
+            parse_bounded(configuration, BoundsKind::Signed).map(ConstraintParameters::NumericRange)
+        }
+        ConstraintFamily::StringLength => {
+            parse_measure_bounds(configuration).map(ConstraintParameters::StringLength)
+        }
+        ConstraintFamily::BytesLength => {
+            parse_measure_bounds(configuration).map(ConstraintParameters::BytesLength)
+        }
+        ConstraintFamily::ItemCount => {
+            parse_measure_bounds(configuration).map(ConstraintParameters::ItemCount)
+        }
+    }
+}
+
+#[derive(PartialEq, Eq)]
+enum BoundsKind {
+    Signed,
+    NonNegative,
+    Cardinality,
+}
+
+fn parse_measure_bounds(
+    configuration: &ConstraintConfiguration,
+) -> Result<MeasureBounds, Vec<ConfigurationDiagnosis>> {
+    let interval = parse_bounded(configuration, BoundsKind::NonNegative)?;
+    let measure =
+        |bound: Bound<i64>| Bound { value: bound.value as u64, inclusive: bound.inclusive };
+    Ok(MeasureBounds {
+        minimum: interval.minimum.map(measure),
+        maximum: interval.maximum.map(measure),
+    })
+}
+
+fn parse_bounded(
+    configuration: &ConstraintConfiguration,
+    kind: BoundsKind,
+) -> Result<IntegerInterval, Vec<ConfigurationDiagnosis>> {
     let mut diagnoses = Vec::new();
     let mut diagnose = |message: String| diagnoses.push(ConfigurationDiagnosis { message });
-    let fields = [
-        (P::Minimum, &configuration.minimum),
-        (P::Maximum, &configuration.maximum),
-        (P::MinimumIsInclusive, &configuration.minimum_is_inclusive),
-        (P::MaximumIsInclusive, &configuration.maximum_is_inclusive),
-    ];
-    if family == ConstraintFamily::UniqueItems {
-        // No Boolean parameter controls this commitment. Undeclared parameters,
-        // including enable/disable fields, remain the membership checker's responsibility.
-        for (field, value) in fields {
-            if value.is_some() {
-                diagnose(format!(
-                    "UniqueItemsConstraint is presence-only and has no {} parameter.",
-                    field.as_property_name()
-                ));
-            }
-        }
-        return if diagnoses.is_empty() {
-            Ok(ConstraintParameters::UniqueItems)
-        } else {
-            Err(diagnoses)
-        };
-    }
 
-    let signed = family == ConstraintFamily::NumericRange;
+    let signed = kind == BoundsKind::Signed;
     let minimum = integer(P::Minimum, &configuration.minimum, signed, &mut diagnose);
     let maximum = integer(P::Maximum, &configuration.maximum, signed, &mut diagnose);
     let lower = boolean(P::MinimumIsInclusive, &configuration.minimum_is_inclusive, &mut diagnose);
     let upper = boolean(P::MaximumIsInclusive, &configuration.maximum_is_inclusive, &mut diagnose);
-    let cardinality = family == ConstraintFamily::Cardinality;
+    let cardinality = kind == BoundsKind::Cardinality;
     if cardinality {
         if configuration.minimum.is_none() {
             diagnose("CardinalityConstraint requires Minimum.".into());
@@ -118,36 +154,44 @@ pub fn parse_constraint_configuration(
     if !diagnoses.is_empty() {
         return Err(diagnoses);
     }
-    let interval = || -> Result<IntegerInterval, Vec<ConfigurationDiagnosis>> {
-        Ok(IntegerInterval {
-            minimum: configured_bound(minimum, lower, "MinimumIsInclusive")?,
-            maximum: configured_bound(maximum, upper, "MaximumIsInclusive")?,
-        })
-    };
-    let measure_bounds = || -> Result<MeasureBounds, Vec<ConfigurationDiagnosis>> {
-        let interval = interval()?;
-        let measure =
-            |bound: Bound<i64>| Bound { value: bound.value as u64, inclusive: bound.inclusive };
-        Ok(MeasureBounds {
-            minimum: interval.minimum.map(measure),
-            maximum: interval.maximum.map(measure),
-        })
-    };
-    match family {
-        ConstraintFamily::Cardinality => match minimum {
-            Some(minimum) => Ok(ConstraintParameters::Cardinality {
-                minimum: minimum as u64,
-                maximum: maximum.map(|value| value as u64),
-            }),
-            None => Err(vec![ConfigurationDiagnosis {
-                message: "CardinalityConstraint requires Minimum.".into(),
-            }]),
-        },
-        ConstraintFamily::UniqueItems => Ok(ConstraintParameters::UniqueItems),
-        ConstraintFamily::NumericRange => interval().map(ConstraintParameters::NumericRange),
-        ConstraintFamily::StringLength => measure_bounds().map(ConstraintParameters::StringLength),
-        ConstraintFamily::BytesLength => measure_bounds().map(ConstraintParameters::BytesLength),
-        ConstraintFamily::ItemCount => measure_bounds().map(ConstraintParameters::ItemCount),
+    if cardinality {
+        let inclusive_bound = |value| Bound { value, inclusive: true };
+        return Ok(IntegerInterval {
+            minimum: minimum.map(inclusive_bound),
+            maximum: maximum.map(inclusive_bound),
+        });
+    }
+    Ok(IntegerInterval {
+        minimum: configured_bound(minimum, lower, "MinimumIsInclusive")?,
+        maximum: configured_bound(maximum, upper, "MaximumIsInclusive")?,
+    })
+}
+
+/// Rejects authored bounds and flags. No Boolean parameter controls this commitment.
+/// Property membership checks other undeclared fields, including enable/disable flags.
+fn parse_presence_only(
+    family_name: &str,
+    configuration: &ConstraintConfiguration,
+) -> Result<(), Vec<ConfigurationDiagnosis>> {
+    let diagnoses: Vec<_> = [
+        (P::Minimum, &configuration.minimum),
+        (P::Maximum, &configuration.maximum),
+        (P::MinimumIsInclusive, &configuration.minimum_is_inclusive),
+        (P::MaximumIsInclusive, &configuration.maximum_is_inclusive),
+    ]
+    .into_iter()
+    .filter(|(_, value)| value.is_some())
+    .map(|(field, _)| ConfigurationDiagnosis {
+        message: format!(
+            "{family_name} is presence-only and has no {} parameter.",
+            field.as_property_name()
+        ),
+    })
+    .collect();
+    if diagnoses.is_empty() {
+        Ok(())
+    } else {
+        Err(diagnoses)
     }
 }
 

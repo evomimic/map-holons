@@ -345,10 +345,10 @@ property ErrorCount.PropertyType {
 property TemplateString.PropertyType {
   type MetaPropertyType.MetaTypeDescriptor
   extends PropertyType.TypeDescriptor
-  value MapStringValueType.StringValueType
+  value PositionalStringTemplateValueType.MapStringValueType
   IsValueRequired true
   header {
-    description: "A format string that defines how a value should be constructed from one or more properties. It uses positional placeholders ($0, $1, $2, …) that are substituted in order with values from a related list of parameters. This pattern can be applied to derive identifiers, labels, paths, or other structured strings."
+    description: "A template for ordered inputs. It uses {n} for required substitutions, [n] for optional substitutions and [.{n}] as an example of an optional segment. A segment is emitted only when all inputs it references are present. See the Positional String Template Specification."
     display_name: "template_string"
     display_plural: "template_strings"
     plural: "TemplateStrings"

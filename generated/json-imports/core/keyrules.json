@@ -104,7 +104,7 @@
       "type": "FormatRule.KeyRuleType",
       "properties": {
         "TypeName": "HolonSpaceNameRule",
-        "TemplateString": "$0"
+        "TemplateString": "{0}"
       },
       "relationships": [
         {

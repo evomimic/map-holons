@@ -276,7 +276,7 @@ fn canonical_corpus_binds_expected_rules_with_expected_families_and_declarations
 
 /// Counts raw occurrences so duplicate edges cannot disappear into the placement set.
 #[test]
-fn scalar_activation_has_one_property_binding_and_one_string_attachment() -> Result<()> {
+fn scalar_activation_has_one_property_binding_and_the_expected_string_attachments() -> Result<()> {
     let documents = canonical_documents()?;
     for (relationship_name, target_key, source_key) in [
         (
@@ -285,6 +285,11 @@ fn scalar_activation_has_one_property_binding_and_one_string_attachment() -> Res
             "PropertyType.TypeDescriptor",
         ),
         ("Constraints", "Length16k.StringLengthConstraint", "MapStringValueType.StringValueType"),
+        (
+            "Constraints",
+            "ValidSyntax.PositionalStringTemplateSyntaxConstraint",
+            "PositionalStringTemplateValueType.MapStringValueType",
+        ),
     ] {
         let mut sources = Vec::new();
         for holon in holons(&documents) {
@@ -305,6 +310,28 @@ fn scalar_activation_has_one_property_binding_and_one_string_attachment() -> Res
         }
         assert_eq!(sources, vec![source_key], "{relationship_name} -> {target_key}");
     }
+    Ok(())
+}
+
+#[test]
+fn template_string_property_selects_the_positional_template_value_type() -> Result<()> {
+    let documents = canonical_documents()?;
+    let property = holons(&documents)
+        .find(|holon| holon["key"] == "TemplateString.PropertyType")
+        .context("missing TemplateString.PropertyType")?;
+    let mut value_types = property["relationships"]
+        .as_array()
+        .context("TemplateString.PropertyType has no relationships")?
+        .iter()
+        .filter(|relationship| relationship["name"] == "ValueType");
+    let relationship =
+        value_types.next().context("TemplateString.PropertyType has no ValueType")?;
+    assert_eq!(
+        relationship["target"],
+        serde_json::json!([{ "$ref": "PositionalStringTemplateValueType.MapStringValueType" }])
+    );
+    assert!(value_types.next().is_none());
+    assert_eq!(property["properties"]["IsValueRequired"], true);
     Ok(())
 }
 
