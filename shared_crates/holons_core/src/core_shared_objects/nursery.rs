@@ -461,6 +461,14 @@ mod tests {
     }
 
     impl HolonServiceApi for StageVersionTestService {
+        fn construct_effective_holon_descriptor_internal(
+            &self,
+            context: &Arc<TransactionContext>,
+            target: HolonReference,
+        ) -> Result<crate::descriptors::EffectiveHolonDescriptor, HolonError> {
+            crate::descriptors::test_support::construct_prepared_fixture(context, target)
+        }
+
         fn as_any(&self) -> &dyn Any {
             self
         }

@@ -7,7 +7,6 @@ use super::{holon_cache::HolonCache, Holon};
 use crate::core_shared_objects::transactions::PrivateReadTransaction;
 #[cfg(test)]
 use crate::core_shared_objects::transactions::TransactionContext;
-use crate::descriptors::Descriptor;
 use crate::reference_layer::{HolonReference, HolonServiceApi};
 use crate::{HolonCacheAccess, HolonCollection, ReadableHolon, RelationshipCache, RelationshipMap};
 use core_types::{HolonError, HolonId, RelationshipName};
@@ -293,49 +292,18 @@ impl HolonCacheAccess for HolonCacheManager {
             crate::core_shared_objects::SpaceReadHandle::new(self.transactions.space()?),
             source_holon_id.clone(),
         );
-        let descriptor = source.holon_descriptor()?;
-        let prepared =
-            crate::descriptors::EffectiveHolonDescriptor::find_prepared(descriptor.holon())?;
-        let prepared_bindings = prepared
-            .as_ref()
-            .map(|prepared| prepared.saved_content_relationship_bindings())
-            .transpose()?;
+        // A cold ordinary read acquires the schema rather than interpreting inheritance
+        // independently. Construction's structural prerequisites use named membership reads.
+        let prepared = source.effective_descriptor()?;
+        let prepared_bindings = prepared.saved_content_relationship_bindings()?;
         let needs_ancestry_binding = prepared
-            .as_ref()
-            .map(|prepared| {
-                prepared.declares_relationship(
-                    &CoreRelationshipTypeName::Extends.to_relationship_name(),
-                )
-            })
-            .transpose()?
-            .unwrap_or(false);
-        let relationship_names = if let Some(bindings) = &prepared_bindings {
-            bindings.iter().map(|(name, _)| name.clone()).collect()
-        } else {
-            let mut seen = HashSet::new();
-            let mut names = Vec::new();
-            // Bootstrap remains usable before effective preparation is available.
-            for relationship in crate::descriptors::effective_relationships::effective_declared_relationships_for_holon(&source)? {
-                let name = relationship.base_relationship_name()?;
-                if seen.insert(name.clone()) {
-                    names.push(name);
-                }
-            }
-            for relationship in
-                crate::reference_layer::available_relationships::available_relationships(&source)?
-            {
-                let name = relationship.descriptor.base_relationship_name()?;
-                if seen.insert(name.clone()) {
-                    names.push(name);
-                }
-            }
-            names
-        };
+            .declares_relationship(&CoreRelationshipTypeName::Extends.to_relationship_name())?;
+        let relationship_names =
+            prepared_bindings.iter().map(|(name, _)| name.clone()).collect::<Vec<_>>();
 
         // A descriptor source may have additional binding candidates on its
         // own ancestry. Reuse its prepared names, leaving policy binding to the guest.
-        let bindings = prepared_bindings.as_deref().unwrap_or_default();
-        let bindings = if needs_ancestry_binding { &[] } else { bindings };
+        let bindings = if needs_ancestry_binding { &[][..] } else { prepared_bindings.as_slice() };
 
         let cache = self
             .relationship_cache

@@ -9,3 +9,7 @@ core_types = { path = "../type_system/core_types" }
 type_names = { path = "../type_system/type_names" }
 # MAP string/newtype construction at lookup and fixture boundaries.
 base_types = { path = "../type_system/base_types" }
+
+[dev-dependencies]
+# Serialize the prepared contract supplied by the in-memory saved-storage fixture.
+serde_json = { workspace = true }

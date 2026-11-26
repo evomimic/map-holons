@@ -16,6 +16,10 @@ pub struct PreparedRelationship {
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct PreparedSchema {
+    /// Restrictive HolonType lifecycle permission, computed from the same lineage.
+    /// Readable malformed declarations retain their error; storage failures abort preparation.
+    #[serde(default)]
+    pub instance_deletion_allowed: Option<Result<bool, HolonError>>,
     pub relationships: Vec<PreparedRelationship>,
     pub lineage: Vec<HolonId>,
     pub navigation_origins: Vec<(HolonId, usize, bool)>,
@@ -26,7 +30,12 @@ pub struct PreparedSchema {
 }
 impl PreparedSchema {
     pub(super) fn compute(computed: &ComputedEffectiveSchema) -> Result<Self, HolonError> {
-        let mut prepared = Self::default();
+        let mut prepared = Self {
+            instance_deletion_allowed: Some(prepare_instance_deletion_permission(
+                &computed.lineage,
+            )?),
+            ..Self::default()
+        };
         let mut policies = std::collections::HashSet::new();
         // A meta-type's explicit declared contract licenses its descriptor
         // instances even when endpoint filtering omits it from that meta-type's
@@ -97,6 +106,31 @@ impl PreparedSchema {
     }
 }
 
+/// Computes the restrictive permission without resolving another Extends edge.
+/// The outer Result distinguishes operational failures from malformed declaration values.
+pub(crate) fn prepare_instance_deletion_permission(
+    lineage: &[HolonReference],
+) -> Result<Result<bool, HolonError>, HolonError> {
+    for descriptor in lineage {
+        match descriptor.property_value(CorePropertyTypeName::InstanceDeletionAllowed)? {
+            Some(base_types::BaseValue::BooleanValue(value)) if !value.0 => return Ok(Ok(false)),
+            Some(base_types::BaseValue::BooleanValue(_)) => {}
+            Some(other) => {
+                return Ok(Err(HolonError::UnexpectedValueType(
+                    format!("{other:?}"),
+                    "Boolean".into(),
+                )));
+            }
+            None => {
+                return Ok(Err(HolonError::InvalidState(
+                    "InstanceDeletionAllowed is missing from a holon type descriptor".into(),
+                )));
+            }
+        }
+    }
+    Ok(Ok(true))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -105,6 +139,59 @@ mod tests {
     };
     use crate::WritableHolon;
     use type_names::CoreRelationshipTypeName as R;
+
+    #[test]
+    fn deletion_projection_preserves_restriction_and_field_errors() -> Result<(), HolonError> {
+        use crate::descriptors::test_support::new_test_holon;
+        let context = build_context();
+        let mut child = new_test_holon(&context, "child")?;
+        let mut parent = new_test_holon(&context, "parent")?;
+        child.with_property_value(CorePropertyTypeName::InstanceDeletionAllowed, true)?;
+        parent.with_property_value(CorePropertyTypeName::InstanceDeletionAllowed, false)?;
+        assert_eq!(
+            prepare_instance_deletion_permission(&[child.clone().into(), parent.clone().into()])?,
+            Ok(false)
+        );
+        parent.with_property_value(CorePropertyTypeName::InstanceDeletionAllowed, true)?;
+        assert_eq!(
+            prepare_instance_deletion_permission(&[child.clone().into(), parent.clone().into()])?,
+            Ok(true)
+        );
+        parent.with_property_value(CorePropertyTypeName::InstanceDeletionAllowed, "invalid")?;
+        let malformed = prepare_instance_deletion_permission(&[child.into(), parent.into()])?;
+        assert!(matches!(malformed, Err(HolonError::UnexpectedValueType(_, _))));
+        let missing = new_test_holon(&context, "missing")?;
+        assert!(matches!(
+            prepare_instance_deletion_permission(&[missing.into()])?,
+            Err(HolonError::InvalidState(_))
+        ));
+        let prepared = PreparedSchema {
+            instance_deletion_allowed: Some(malformed.clone()),
+            ..Default::default()
+        };
+        let restored: PreparedSchema =
+            serde_json::from_str(&serde_json::to_string(&prepared).unwrap()).unwrap();
+        assert_eq!(restored.instance_deletion_allowed, Some(malformed));
+        Ok(())
+    }
+
+    #[test]
+    fn deletion_projection_does_not_cache_operational_errors_as_field_errors(
+    ) -> Result<(), HolonError> {
+        use crate::descriptors::test_support::build_context_with_read_errors;
+        use core_types::{HolonId, LocalId};
+        let id = HolonId::Local(LocalId(vec![71; 39]));
+        // Even an error shaped like a semantic field failure originated from I/O here.
+        let error = HolonError::UnexpectedValueType("backend error".into(), "Boolean".into());
+        let context = build_context_with_read_errors(
+            vec![],
+            Default::default(),
+            std::collections::HashMap::from([(id.clone(), error.clone())]),
+        );
+        let reference = HolonReference::smart_from_id(context.space_read_handle(), id);
+        assert_eq!(prepare_instance_deletion_permission(&[reference]), Err(error));
+        Ok(())
+    }
 
     #[test]
     fn policy_projection_keeps_explicit_contract_members_outside_meta_type_endpoint_lineage(

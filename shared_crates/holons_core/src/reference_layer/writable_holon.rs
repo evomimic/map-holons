@@ -44,7 +44,7 @@ pub trait WritableHolon: WritableHolonImpl {
             // Reuse published products, but never recursively initiate construction.
             match crate::descriptors::EffectiveHolonDescriptor::find_prepared(descriptor.holon())? {
                 Some(prepared) => prepared.instance_properties(),
-                None => descriptor.instance_properties(),
+                None => descriptor.instance_properties_for_assembly(),
             }
         }) {
             Ok(properties) => properties,

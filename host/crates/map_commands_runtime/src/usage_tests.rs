@@ -382,6 +382,7 @@ fn setup() -> (Arc<Store>, Arc<HolonSpaceManager>, Arc<TransactionContext>) {
             store.property(n, "IsDefinitional", BaseValue::BooleanValue(false.into()));
             store.property(n, "AllowsDuplicates", BaseValue::BooleanValue(false.into()));
             store.edge(n, "Extends", &[110]);
+            store.edge(n, "SourceType", &[descriptor]);
             declarations.push(n);
         }
         store.edge(descriptor, "InstanceRelationships", &declarations);

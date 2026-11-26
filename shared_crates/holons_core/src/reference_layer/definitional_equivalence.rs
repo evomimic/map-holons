@@ -306,7 +306,7 @@ fn definitional_relationships(
                         )
                     })
                     .collect(),
-                None => descriptor.instance_relationships()?,
+                None => descriptor.instance_relationships_for_assembly()?,
             };
             for descriptor in declared {
                 if descriptor.is_definitional()? {

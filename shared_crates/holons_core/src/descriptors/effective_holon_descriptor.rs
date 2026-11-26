@@ -20,7 +20,8 @@ use crate::{DefinitionIdentity, HolonReference, ReadableHolon, WritableHolon};
 ///
 /// Instance properties, declared instance relationships, singular/plural
 /// navigable relationships, afforded Dances and Commands, constraints, validation
-/// bindings, and the effective instance key rule. Combined navigation composes
+/// bindings, the effective instance key rule, and restrictive instance deletion
+/// permission. Combined navigation composes
 /// the two partitions without removing occurrences. Supporting state identifies
 /// the described type and carries prepared relationship policies and origins.
 ///
@@ -76,6 +77,9 @@ impl EffectiveHolonDescriptor {
     /// Reads existing preparation through the reference's owner or space registry.
     pub(crate) fn find_prepared(target: &HolonReference) -> Result<Option<Self>, HolonError> {
         if let Some(context) = target.transaction_context() {
+            if !matches!(target, HolonReference::Smart(_)) {
+                return context.find_frozen_effective(target);
+            }
             return Self::find_in_context(&context, target);
         }
         match target.space_read_handle().descriptor_registry() {
@@ -184,12 +188,100 @@ impl EffectiveHolonDescriptor {
     ) -> Result<RelationshipDescriptor, HolonError> {
         self.derived.read(|| {
             let name = name.to_relationship_name();
+            let mut found: Option<RelationshipDescriptor> = None;
             for descriptor in self.navigable_relationships()? {
                 if descriptor.base_relationship_name()? == name {
-                    return Ok(descriptor);
+                    if let Some(previous) = &found {
+                        if !same_definition(previous.holon(), descriptor.holon())? {
+                            return Err(HolonError::AmbiguousRelationshipTraversal {
+                                relationship: name.to_string(),
+                                descriptor: accessor_helpers::descriptor_label(
+                                    self.described_holon_type()?.holon(),
+                                ),
+                            });
+                        }
+                    } else {
+                        found = Some(descriptor);
+                    }
                 }
             }
-            Err(self.missing("relationship", name.to_string()))
+            found.ok_or_else(|| self.missing("relationship", name.to_string()))
+        })
+    }
+
+    /// Finds an authored instance declaration, independently of navigable inverses
+    /// and maximum-zero navigation filtering. Conflicting names remain errors.
+    pub fn get_declared_relationship_by_name(
+        &self,
+        name: impl ToRelationshipName,
+    ) -> Result<DeclaredRelationshipDescriptor, HolonError> {
+        self.derived.read(|| {
+            let requested = name.to_relationship_name();
+            let prepared = self.prepared_schema()?;
+            let mut found = None;
+            for descriptor in self.declared_relationships()? {
+                let identity = descriptor.holon().full_reference_id_string();
+                if prepared
+                    .relationships
+                    .iter()
+                    .any(|entry| entry.identity == identity && entry.name == requested)
+                {
+                    found = Some(descriptor);
+                }
+            }
+            found.ok_or_else(|| self.missing("relationship", requested.to_string()))
+        })
+    }
+
+    /// Enumerates the authored contract for mutation and cloning, rejecting duplicate names.
+    /// The lossless instance_relationships collection remains available for diagnostics.
+    pub fn declared_relationships(
+        &self,
+    ) -> Result<Vec<DeclaredRelationshipDescriptor>, HolonError> {
+        self.derived.read(|| {
+            let declarations = self.instance_relationships()?;
+            let prepared = self.prepared_schema()?;
+            let policies = prepared
+                .relationships
+                .iter()
+                .map(|entry| (entry.identity.as_str(), entry))
+                .collect::<std::collections::HashMap<_, _>>();
+            let mut seen = std::collections::HashSet::new();
+            for descriptor in &declarations {
+                let identity = descriptor.holon().full_reference_id_string();
+                let policy = policies.get(identity.as_str()).ok_or_else(|| {
+                    HolonError::InvalidParameter("Missing prepared declaration policy".into())
+                })?;
+                let name = &policy.name;
+                if !seen.insert(name.clone()) {
+                    return Err(HolonError::DuplicateInheritedDeclaration {
+                        kind: "relationship".into(),
+                        name: name.to_string(),
+                        descriptor: accessor_helpers::descriptor_label(
+                            self.described_holon_type()?.holon(),
+                        ),
+                    });
+                }
+                if !policy.updateable {
+                    return Err(HolonError::WrongDescriptorKind {
+                        expected: CoreHolonTypeName::DeclaredRelationshipType
+                            .as_holon_name()
+                            .to_string(),
+                        found: name.to_string(),
+                        descriptor: identity,
+                    });
+                }
+            }
+            Ok(declarations)
+        })
+    }
+
+    /// Reads the prepared restrictive permission; never reinterprets ancestor properties.
+    pub fn instance_deletion_allowed(&self) -> Result<bool, HolonError> {
+        self.derived.read(|| {
+            self.prepared_schema()?.instance_deletion_allowed.ok_or_else(|| {
+                HolonError::InvalidParameter("Missing prepared instance deletion permission".into())
+            })?
         })
     }
 
@@ -1068,6 +1160,198 @@ mod tests {
         Ok(())
     }
 
+    /// Builds a real directional definition for prepared navigation tests.
+    fn navigation_member(
+        context: &Arc<TransactionContext>,
+        source: &HolonReference,
+        key: &str,
+        name: &str,
+        inverse: bool,
+        maximum: Option<i64>,
+    ) -> Result<HolonReference, HolonError> {
+        let category = if inverse {
+            "InverseRelationshipType.RelationshipType"
+        } else {
+            "DeclaredRelationshipType.RelationshipType"
+        };
+        let mut member = canonical(context, key, name)?;
+        member.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![resolve_core_descriptor(context, category)?],
+        )?;
+        member.add_related_holons(CoreRelationshipTypeName::SourceType, vec![source.clone()])?;
+        member.add_related_holons(CoreRelationshipTypeName::TargetType, vec![source.clone()])?;
+        member.with_property_value(CorePropertyTypeName::IsDefinitional, true)?;
+        constrain(context, &mut member, maximum)?;
+        Ok(member)
+    }
+
+    #[test]
+    fn declared_lookup_excludes_inverse_and_preserves_disabled_contracts() -> Result<(), HolonError>
+    {
+        let (context, mut parent, target) = fixture()?;
+        let disabled =
+            navigation_member(&context, &parent, "disabled", "Disabled", false, Some(0))?;
+        let inverse = navigation_member(&context, &parent, "inverse", "Inverse", true, Some(1))?;
+        parent.add_related_holons(
+            CoreRelationshipTypeName::InstanceRelationships,
+            vec![disabled.clone()],
+        )?;
+        parent.add_related_holons(CoreRelationshipTypeName::SourceOf, vec![inverse.clone()])?;
+        let result = construct_effective_holon_descriptor(&context, target.clone())?;
+        assert!(same_definition(
+            result.get_declared_relationship_by_name("Disabled")?.holon(),
+            &disabled
+        )?);
+        assert!(same_definition(result.get_relationship_by_name("Inverse")?.holon(), &inverse)?);
+        for (name, declared) in [("Disabled", false), ("Inverse", true), ("Missing", true)] {
+            let found = if declared {
+                result.get_declared_relationship_by_name(name).map(|_| ())
+            } else {
+                result.get_relationship_by_name(name).map(|_| ())
+            };
+            assert!(matches!(found, Err(HolonError::DescriptorDeclarationNotFound { .. })));
+        }
+        let before = inheritance::lineage_edge_reads(&target);
+        for _ in 0..3 {
+            result.get_declared_relationship_by_name("Disabled")?;
+            result.get_relationship_by_name("Inverse")?;
+        }
+        assert_eq!(inheritance::lineage_edge_reads(&target), before);
+        Ok(())
+    }
+
+    #[test]
+    fn prepared_navigation_reports_distinct_same_named_candidates() -> Result<(), HolonError> {
+        let (context, mut parent, target) = fixture()?;
+        let declared = navigation_member(&context, &parent, "declared", "Shared", false, Some(1))?;
+        let inverse = navigation_member(&context, &parent, "inverse", "Shared", true, Some(1))?;
+        parent.add_related_holons(
+            CoreRelationshipTypeName::InstanceRelationships,
+            vec![declared.clone()],
+        )?;
+        parent.add_related_holons(
+            CoreRelationshipTypeName::SourceOf,
+            vec![declared.clone(), inverse],
+        )?;
+        let result = construct_effective_holon_descriptor(&context, target)?;
+        assert!(matches!(
+            result.get_relationship_by_name("Shared"),
+            Err(HolonError::AmbiguousRelationshipTraversal { .. })
+        ));
+        assert!(same_definition(
+            result.get_declared_relationship_by_name("Shared")?.holon(),
+            &declared
+        )?);
+        Ok(())
+    }
+
+    #[test]
+    fn malformed_authored_inverse_is_evidence_but_never_a_mutation_declaration(
+    ) -> Result<(), HolonError> {
+        let (context, mut parent, target) = fixture()?;
+        let inverse =
+            navigation_member(&context, &parent, "misplaced-inverse", "Inverse", true, Some(1))?;
+        parent
+            .add_related_holons(CoreRelationshipTypeName::InstanceRelationships, vec![inverse])?;
+        let result = construct_effective_holon_descriptor(&context, target)?;
+        assert_eq!(
+            result.instance_relationships()?.len(),
+            1,
+            "retain invalid evidence for validation"
+        );
+        assert!(result.get_relationship_by_name("Inverse").is_ok());
+        assert!(matches!(
+            result.get_declared_relationship_by_name("Inverse"),
+            Err(HolonError::WrongDescriptorKind { .. })
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn repeated_navigation_identity_remains_selectable_but_duplicate_declarations_fail(
+    ) -> Result<(), HolonError> {
+        let (context, mut parent, mut target) = fixture()?;
+        let member = navigation_member(&context, &parent, "one", "One", false, Some(1))?;
+        parent.add_related_holons(
+            CoreRelationshipTypeName::InstanceRelationships,
+            vec![member.clone()],
+        )?;
+        target.add_related_holons(
+            CoreRelationshipTypeName::InstanceRelationships,
+            vec![member.clone()],
+        )?;
+        let result = construct_effective_holon_descriptor(&context, target)?;
+        assert_eq!(result.navigable_relationships()?.len(), 2);
+        assert!(same_definition(result.get_relationship_by_name("One")?.holon(), &member)?);
+        assert!(matches!(
+            result.get_declared_relationship_by_name("One"),
+            Err(HolonError::DuplicateInheritedDeclaration { .. })
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn deletion_permission_is_prepared_once_and_recomputed_after_mutable_edits(
+    ) -> Result<(), HolonError> {
+        let (context, mut parent, mut target) = fixture()?;
+        parent.with_property_value(CorePropertyTypeName::InstanceDeletionAllowed, false)?;
+        target.with_property_value(CorePropertyTypeName::InstanceDeletionAllowed, true)?;
+        let before = inheritance::lineage_edge_reads(&target);
+        let result = construct_effective_holon_descriptor(&context, target.clone())?;
+        assert!(!result.instance_deletion_allowed()?);
+        parent.with_property_value(CorePropertyTypeName::InstanceDeletionAllowed, "malformed")?;
+        for _ in 0..3 {
+            assert!(!result.instance_deletion_allowed()?);
+        }
+        assert_eq!(inheritance::lineage_edge_reads(&target) - before, 1);
+        let next = construct_effective_holon_descriptor(&context, target)?;
+        assert!(matches!(
+            next.instance_deletion_allowed(),
+            Err(HolonError::UnexpectedValueType(_, _))
+        ));
+        assert!(
+            next.instance_properties()?.is_empty(),
+            "a malformed permission does not suppress unrelated products"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn assembly_reuses_frozen_products_without_another_lineage_walk() -> Result<(), HolonError> {
+        let (context, mut parent, mut target) = fixture()?;
+        parent.with_property_value(CorePropertyTypeName::InstanceDeletionAllowed, false)?;
+        let member =
+            navigation_member(&context, &parent, "frozen-member", "Member", false, Some(1))?;
+        parent.add_related_holons(CoreRelationshipTypeName::InstanceRelationships, vec![member])?;
+        target.with_property_value(CorePropertyTypeName::InstanceDeletionAllowed, true)?;
+        let mut source = new_test_holon(&context, "frozen-instance")?;
+        source.add_related_holons(CoreRelationshipTypeName::DescribedBy, vec![target.clone()])?;
+        let source: HolonReference = source.into();
+        let product;
+        {
+            let _scope = context.begin_frozen_validation()?;
+            product = EffectiveHolonDescriptor::acquire(target.clone())?;
+            let before = inheritance::lineage_edge_reads(&target);
+            let found =
+                EffectiveHolonDescriptor::find_prepared(&target)?.expect("prepared frozen schema");
+            assert!(
+                EffectiveHolonDescriptor::find_in_context(&context, &target)?.is_none(),
+                "saved-schema restoration must not consume a mutable frozen projection"
+            );
+            assert_eq!(product.holon(), found.holon());
+            super::effective_relationships::relationship_declaration_for_assembly(
+                &source, "Member",
+            )?;
+            assert_eq!(inheritance::lineage_edge_reads(&target), before);
+        }
+        assert!(EffectiveHolonDescriptor::find_prepared(&target)?.is_none());
+        assert!(matches!(product.instance_deletion_allowed(), Err(HolonError::ObsoleteSession)));
+        target.with_property_value(CorePropertyTypeName::InstanceDeletionAllowed, false)?;
+        assert!(!EffectiveHolonDescriptor::acquire(target)?.instance_deletion_allowed()?);
+        Ok(())
+    }
+
     #[test]
     fn malformed_cardinality_is_a_construction_error() -> Result<(), HolonError> {
         let (context, mut parent, target) = fixture()?;
@@ -1371,15 +1655,27 @@ mod tests {
         };
         assert_eq!(
             ids(result.instance_properties()?.into_iter().map(|p| p.holon().clone()).collect()),
-            ids(direct.instance_properties()?.into_iter().map(|p| p.holon().clone()).collect())
+            ids(direct
+                .instance_properties_for_assembly()?
+                .into_iter()
+                .map(|p| p.holon().clone())
+                .collect())
         );
         assert_eq!(
             ids(result.instance_relationships()?.into_iter().map(|r| r.holon().clone()).collect()),
-            ids(direct.instance_relationships()?.into_iter().map(|r| r.holon().clone()).collect())
+            ids(direct
+                .instance_relationships_for_assembly()?
+                .into_iter()
+                .map(|r| r.holon().clone())
+                .collect())
         );
         assert_eq!(
             ids(result.afforded_dances()?.into_iter().map(|d| d.holon().clone()).collect()),
-            ids(direct.afforded_dances()?.into_iter().map(|d| d.holon().clone()).collect())
+            ids(direct
+                .afforded_dances_for_assembly()?
+                .into_iter()
+                .map(|d| d.holon().clone())
+                .collect())
         );
         assert_eq!(
             ids(result.afforded_commands()?.into_iter().map(|c| c.holon().clone()).collect()),

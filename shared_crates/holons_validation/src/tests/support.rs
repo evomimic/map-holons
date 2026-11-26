@@ -37,6 +37,78 @@ struct FixtureStorage {
     reads_by_relationship: std::sync::Mutex<HashMap<RelationshipName, usize>>,
 }
 impl HolonServiceApi for FixtureStorage {
+    /// Supplies the saved contract used by ordinary cloning. These fixture snapshots
+    /// omit the runtime package; construction/transport conformance belongs to Sweettests.
+    fn construct_effective_holon_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<holons_core::descriptors::EffectiveHolonDescriptor, HolonError> {
+        use holons_core::descriptors::{
+            ComputedEffectiveSchema, Descriptor, EffectiveHolonDescriptor, PreparedRelationship,
+            PreparedSchema, RelationshipDescriptor,
+        };
+        let schema = ComputedEffectiveSchema::resolve(&target)?;
+        let declarations = schema
+            .contributions(R::InstanceRelationships)
+            .iter()
+            .map(|entry| entry.member.clone())
+            .collect::<Vec<_>>();
+        let relationships = declarations
+            .iter()
+            .map(|member| {
+                let descriptor = RelationshipDescriptor::from_holon(member.clone());
+                Ok(PreparedRelationship {
+                    identity: descriptor.holon().full_reference_id_string(),
+                    name: descriptor.base_relationship_name()?,
+                    policy: holons_core::RelationshipCachePolicy::Reuse,
+                    updateable: true,
+                })
+            })
+            .collect::<Result<Vec<_>, HolonError>>()?;
+        let mut result = context.mutation().new_holon(None)?;
+        result.add_related_holons(R::DescribedHolonType, vec![target])?;
+        let mut prepared = PreparedSchema {
+            relationships,
+            lineage: schema
+                .lineage
+                .iter()
+                .map(ReadableHolon::holon_id)
+                .collect::<Result<_, _>>()?,
+            ..Default::default()
+        };
+        // Preserve all assessment products and their origins when the ordinary
+        // acquisition publishes this saved fixture in the Session registry.
+        for (source, product) in [
+            (R::InstanceProperties, R::EffectiveInstanceProperties),
+            (R::InstanceRelationships, R::EffectiveInstanceRelationships),
+            (R::AffordsDance, R::EffectiveAffordsDance),
+            (R::AffordsCommand, R::EffectiveAffordsCommand),
+            (R::ValidationBindings, R::EffectiveValidationBindings),
+            (R::Constraints, R::EffectiveConstraints),
+            (R::InstanceKeyRule, R::EffectiveInstanceKeyRule),
+        ] {
+            let entries = schema.contributions(source);
+            result.add_related_holons(
+                product,
+                entries.iter().map(|entry| entry.member.clone()).collect(),
+            )?;
+            prepared.origins.push(
+                entries
+                    .iter()
+                    .map(|entry| Ok((entry.declared_on.holon_id()?, entry.local_position)))
+                    .collect::<Result<_, HolonError>>()?,
+            );
+        }
+        result.with_property_value(
+            "PreparedSchema",
+            serde_json::to_string(&prepared)
+                .map_err(|error| HolonError::InvalidParameter(error.to_string()))?,
+        )?;
+        result.mark_as_immutable()?;
+        Ok(EffectiveHolonDescriptor::from_constructed_holon(result.into()))
+    }
+
     fn construct_derived_descriptor_internal(
         &self,
         context: &Arc<TransactionContext>,
