@@ -33,6 +33,11 @@ it('consumes consolidated child metadata and optional configuration through one 
   expect(invoke).toHaveBeenCalledOnce();
   expect(invoke.mock.calls[0][1].request.command.Transaction.action.ResolveComposition).toEqual({ reconsider: false, owner: ref(1), subject: ref(3), theme: ref(10), demand_slot: ref(2), collection_source: null });
   invoke.mockClear();
+  response.data.bindings[0] = { ...response.data.bindings[0], ...{ value_holder: 0 } };
+  const contextual = await tx.resolvePropertyComposition(createPropertyDescriptorHandle(bound(3)), bound(1), bound(2), bound(10), bound(1));
+  expect(invoke.mock.calls[0][1].request.command.Transaction.action.ResolveComposition.value_holder).toEqual(ref(1));
+  expect(contextual.bindings[0].valueHolder?.equals(bound(1))).toBe(true);
+  invoke.mockClear();
   await tx.resolveRelationshipComposition(bound(1), bound(3), bound(10), bound(2), createRelationshipDescriptorHandle(bound(4)));
   expect(invoke).toHaveBeenCalledOnce();
   expect(invoke.mock.calls[0][1].request.command.Transaction.action.ResolveComposition).toEqual({ reconsider: false, owner: ref(1), subject: ref(3), theme: ref(10), demand_slot: ref(2), collection_source: ref(4) });

@@ -3,6 +3,7 @@ import type { PropertyDescriptorHandle } from './descriptors';
 import type { HolonReference } from './references';
 
 export interface CompositionBinding {
+  valueHolder?: HolonReference;
   parent: number | null;
   owner: HolonReference;
   slot: HolonReference;

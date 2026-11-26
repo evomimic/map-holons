@@ -93,6 +93,8 @@ pub enum TransactionActionWire {
         reconsider: bool,
         owner: HolonReferenceWire,
         subject: HolonReferenceWire,
+        #[serde(default)]
+        value_holder: Option<HolonReferenceWire>,
         theme: HolonReferenceWire,
         demand_slot: Option<HolonReferenceWire>,
         collection_source: Option<HolonReferenceWire>,
@@ -273,6 +275,8 @@ pub enum VisualizerKindWire {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct VisualizerSelectionRequestWire {
     pub subject: HolonReferenceWire,
+    #[serde(default)]
+    pub value_holder: Option<HolonReferenceWire>,
     pub requested_kind: VisualizerKindWire,
     pub owner: VisualizerOwnerWire,
     pub slot: HolonReferenceWire,
@@ -291,6 +295,7 @@ impl VisualizerSelectionRequestWire {
         context: &Arc<TransactionContext>,
     ) -> Result<VisualizerSelectionRequest, HolonError> {
         Ok(VisualizerSelectionRequest {
+            value_holder: self.value_holder.map(|h| h.bind(context)).transpose()?,
             subject: self.subject.bind(context)?,
             requested_kind: self.requested_kind.into(),
             owner: match self.owner {
@@ -399,6 +404,7 @@ impl TransactionActionWire {
                 })
             }
             TransactionActionWire::ResolveComposition {
+                value_holder,
                 reconsider,
                 owner,
                 subject,
@@ -407,6 +413,7 @@ impl TransactionActionWire {
                 collection_source,
             } => {
                 let request = holons_core::dahn::composition::CompositionRequest {
+                    value_holder: value_holder.map(|h| h.bind(context)).transpose()?,
                     owner: owner.bind(context)?,
                     subject: subject.bind(context)?,
                     theme: theme.bind(context)?,

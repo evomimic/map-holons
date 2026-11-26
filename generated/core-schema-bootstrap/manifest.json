@@ -1,6 +1,6 @@
 {
-  "release_identity": "MAP Core Schema-v0.0.11",
-  "core_schema_key": "MAP Core Schema-v0.0.11",
+  "release_identity": "MAP Core Schema-v0.0.12",
+  "core_schema_key": "MAP Core Schema-v0.0.12",
   "core_schema_space_key": "MAP.CoreSchemaSpace",
   "packages": [
     {
@@ -59,83 +59,83 @@
   "imports": [
     {
       "path": "imports/core/abstract-value-types.json",
-      "sha256": "ae4698df65b1f80b2bf19a4205d2058893199a45da5198539a41ebacd26310cf"
+      "sha256": "ef6d12f03f93fbd8fb31f2b1cb25014b50c7e65d7a29aeed4f9b34e3ef7ac0fa"
     },
     {
       "path": "imports/core/concrete-value-types.json",
-      "sha256": "2437f753c91f1cc5cc3cb00f906b596ece330cff50a1a1e47aae6daa9cc36b29"
+      "sha256": "6a83699cbf86368b207d4dc762e9df7c461b4d0bd35060d240ff7c2150e30bec"
     },
     {
       "path": "imports/core/keyrules.json",
-      "sha256": "e51dc14c100d347d56e4b04b2b6c6b47b5e7c48931b9580fef981a5400c83e6e"
+      "sha256": "b07f8dec4f852842e5bf851bc866980060c1e64cb09f40f8530acf66d6e5c323"
     },
     {
       "path": "imports/core/loader-types.json",
-      "sha256": "40bd19967ca926c4b74dedf2fbcbae7a27f1af87a34ced1aade720b46fc75b1e"
+      "sha256": "215e1764392056f3f147268871599bd29597c411e24bff5840630cd44992fb4d"
     },
     {
       "path": "imports/core/operator-types.json",
-      "sha256": "f537578d215b97bfea6d3810dcd42a474a99c9d700ff21b28f9b6517809b0aaa"
+      "sha256": "b6ea48148c572e1a303afd25add64aee6d43356200315fcb7053647c3a34e1ab"
     },
     {
       "path": "imports/core/property-types.json",
-      "sha256": "9dc204e9a801c935eb52dbf699a01d92be37218695c1b11cfd010685c95af999"
+      "sha256": "5eba3b4b19909ae248c21a90bc2829d71df87e90328d3dfa553636e761207a64"
     },
     {
       "path": "imports/core/relationship-types.json",
-      "sha256": "be6f263d250e12566defc3020ac65ef7c5a8a14f0977ec7cd4617f032c6f52e4"
+      "sha256": "7d6dac437fb63c6ea68b55f53df14b3d1a322ca1f2c51373a7a254ab601333e3"
     },
     {
       "path": "imports/core/root.json",
-      "sha256": "ac5523c0335d18c12e7359bb282f0210a9827998bd5a5580909abfd454628149"
+      "sha256": "c08f33e8a75aea091af612737445ed539ddec1f6d09f741223d37c39953235e0"
     },
     {
       "path": "imports/core/validation.json",
-      "sha256": "5a159f9139d8bd05a4a6810be8623be55d2b29042a7d9318bd75bda35cf4868a"
+      "sha256": "a814b72db3815f8403be82e4bc40be66762d7a3f6eaad4755ee3fa6401872b51"
     },
     {
       "path": "imports/core/value-constraint-types.json",
-      "sha256": "c9df6eeee086534ea1ebdca879a1719a4461f87f3e8133e7671a0adbba8016da"
+      "sha256": "2296805925ce8a6c8ceb01b2f9127d6c9177acea72078c0bb8d3a6bf3f190371"
     },
     {
       "path": "imports/validation/schema.json",
-      "sha256": "47c0dfc70e8dc244d25d8c21935c20ddb7ed469d0e914241f50ba7a2056e5a7f"
+      "sha256": "949c13c48246dd1c145106b60fc795911d49d93b0baaf4c4ba5b3131e26efb8f"
     },
     {
       "path": "imports/dance/schema.json",
-      "sha256": "de914572b8f1e984717be9b053f12bdb60c1219d0079c6eab0207d9f2a953c69"
+      "sha256": "c2625597a5590a2b6e802dad9fee0edc4e26a1e3e4f42f734c0ecc2419a29907"
     },
     {
       "path": "imports/dancer/schema.json",
-      "sha256": "102eaa6e9475ed32c608da54d2cc2f6e1c3e8571ccabf60c684bcf68286e501c"
+      "sha256": "8897a838e19a99929393db4d85d571e0977e11bc1e80fe2dc5f9790e94a6ba35"
     },
     {
       "path": "imports/commands/schema.json",
-      "sha256": "e81c73f0ba1f3073a33dda73f35fc5e85b41ff36cd10b10f00c596a6e610154e"
+      "sha256": "66386e1d7da1e9abb8fa43ef383b864a2f9f8969e96d8ae5fda11b6a8eec4ac0"
     },
     {
       "path": "imports/descriptor-runtime/schema.json",
-      "sha256": "1a664a2e72de9cfab7b063d82a725ccd464110d1fc465bb97de2401c0ecd6edd"
+      "sha256": "219e45c1d181642f4ff6f0878ed997855b5fd65ca9faf68469260837a886817f"
     },
     {
       "path": "imports/query/schema.json",
-      "sha256": "5299780efad6640ff8fb3652c24f74534229a733f2556cc4d04a34cc409e6aa4"
+      "sha256": "bc5b34875e98e0ac346de3ed23cc3b4d87250a80232a1dbe860d40c14b2ef81a"
     },
     {
       "path": "imports/query-dance/schema.json",
-      "sha256": "e7992045764ca4f6cbecedcb61dc954f46233d03585244556bef7ccb444d11b3"
+      "sha256": "20b04fc5d179d6f6bdbddca2ee2bd06274fe63d6ea700a47a57a15ae3a778f7a"
     },
     {
       "path": "imports/design-tokens/schema.json",
-      "sha256": "6906a5ee90d03c50f3b9370cc79852a4e43128704901038c44f9149c9faf6423"
+      "sha256": "bee4b84e5d101bf3587089e3b556a6e5d3de2fc19b889077260e87fa5f16cb55"
     },
     {
       "path": "imports/meta-design-system/schema.json",
-      "sha256": "a5aab4ff64eb07b89590ab281619f29afc501eb96a2ba1ce6c9037c86fc98ec9"
+      "sha256": "d74bc61cfe9cf199b17381c4925b46926eede9696c28c7ff4406d3e7d8fcd19f"
     },
     {
       "path": "imports/theme/deep-ocean.json",
-      "sha256": "b8e6ff7f89f3fe2cd983c995c20c5662a7e8cbfff0857f8a5c8d3a01241b631a"
+      "sha256": "a9837ccb197bcf21677961a1e5e390524e0c2145b7295a49665ad469b398ab16"
     },
     {
       "path": "imports/theme/forest-sanctuary.json",
@@ -151,15 +151,15 @@
     },
     {
       "path": "imports/agent-spaces/schema.json",
-      "sha256": "f1345d5222bef94260761ba069d05f110331b528da1208a183566a9d37a28d5c"
+      "sha256": "30bb54bd44a7329fc5447737e61652becd4af26f336d9c476b37809874621c82"
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "5a5e53d9c69f9a87525b333be2b4129b9edf9b4a7b865c386653c70fd0629b0d"
+      "sha256": "2dabb590c8820de7e4fc0be232324cb99ddf2e26dc601477b56a820fda5ce763"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
-      "sha256": "9d00e269021e1aa091edeb86d35d3406c89f80d1144f7c3bf95bf9b578e815e8"
+      "sha256": "4d0d36e25ee51fe55b9395dfc0bfd474ed9d287a809b008e0a87d5373a8b6391"
     }
   ],
   "required_holons": [
@@ -696,6 +696,10 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(HolonType.TypeDescriptor)-[PropertyValueHolderOf]->(ResolveCompositionRequest.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(HolonType.TypeDescriptor)-[RejectedByCommit]->(CommitResponse.Projection)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
@@ -1145,6 +1149,10 @@
     },
     {
       "key": "(ResolveCompositionRequest.HolonType)-[CompositionTheme]->(Theme.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(ResolveCompositionRequest.HolonType)-[PropertyValueHolder]->(HolonType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
@@ -4060,11 +4068,11 @@
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP Core Schema-v0.0.11",
+      "key": "MAP Core Schema-v0.0.12",
       "type": "Schema.HolonType"
     },
     {
-      "key": "MAP DAHN Schema-v0.1.4",
+      "key": "MAP DAHN Schema-v0.1.5",
       "type": "Schema.HolonType"
     },
     {

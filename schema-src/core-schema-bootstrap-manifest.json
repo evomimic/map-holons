@@ -1,6 +1,6 @@
 {
-  "release_identity": "MAP Core Schema-v0.0.11",
-  "core_schema_key": "MAP Core Schema-v0.0.11",
+  "release_identity": "MAP Core Schema-v0.0.12",
+  "core_schema_key": "MAP Core Schema-v0.0.12",
   "core_schema_space_key": "MAP.CoreSchemaSpace",
   "packages": [
     {

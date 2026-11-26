@@ -27,10 +27,10 @@
               "$ref": "MAP Commands Schema-v0.1.4"
             },
             {
-              "$ref": "MAP Core Schema-v0.0.11"
+              "$ref": "MAP Core Schema-v0.0.12"
             },
             {
-              "$ref": "MAP DAHN Schema-v0.1.4"
+              "$ref": "MAP DAHN Schema-v0.1.5"
             },
             {
               "$ref": "MAP Dance Schema-v0.1.4"

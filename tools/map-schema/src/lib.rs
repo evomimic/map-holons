@@ -1153,7 +1153,7 @@ mod tests {
         let tdl = fs::read_to_string(out_dir.join("book-person-inverse.tdl"))?;
 
         assert!(tdl.contains(
-            "schema \"BookAuthorInverseSchema\" {\n  depends_on \"MAP Core Schema-v0.0.11\""
+            "schema \"BookAuthorInverseSchema\" {\n  depends_on \"MAP Core Schema-v0.0.12\""
         ));
 
         Ok(())

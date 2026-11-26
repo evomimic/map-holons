@@ -550,6 +550,7 @@ mod tests {
         subject.add_related_holons("DescribedBy", vec![saved(2)])?;
         let subject: HolonReference = subject.into();
         let request = CompositionRequest {
+            value_holder: None,
             owner: saved(1),
             subject: subject.clone(),
             theme: saved(3),
@@ -559,6 +560,7 @@ mod tests {
         let references = vec![subject, saved(1), saved(2), saved(3), saved(4), saved(5), saved(6)];
         let data = CompositionData {
             bindings: vec![ChildBinding {
+                value_holder: None,
                 parent: None,
                 owner: 1,
                 slot: 6,

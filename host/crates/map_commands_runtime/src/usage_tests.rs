@@ -402,6 +402,7 @@ fn request(
     slot: u32,
 ) -> VisualizerSelectionRequest {
     VisualizerSelectionRequest {
+        value_holder: None,
         subject: reference(context, subject),
         requested_kind: VisualizerKind::Node,
         owner: VisualizerOwner::Visualizer(reference(context, 40)),

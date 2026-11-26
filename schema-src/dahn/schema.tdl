@@ -1,5 +1,5 @@
-schema "MAP DAHN Schema-v0.1.4" {
-  depends_on "MAP Core Schema-v0.0.11"
+schema "MAP DAHN Schema-v0.1.5" {
+  depends_on "MAP Core Schema-v0.0.12"
   depends_on "MAP Agent Spaces Schema-v0.1.4"
   depends_on "MAP Dance Schema-v0.1.4"
   depends_on "MAP Design Tokens Schema-v0.1.4"
@@ -4087,7 +4087,7 @@ holon ResolveCompositionRequest.HolonType {
     plural: "ResolveCompositionRequestEntries"
   }
   relationships {
-    InstanceRelationships -> [(ResolveCompositionRequest.HolonType)-[CompositionSubject]->(HolonType.TypeDescriptor), (ResolveCompositionRequest.HolonType)-[CompositionTheme]->(Theme.HolonType), (ResolveCompositionRequest.HolonType)-[RequestedCompositionSlot]->(VisualizerSlot.HolonType), (ResolveCompositionRequest.HolonType)-[SelectedCollectionSource]->(RelationshipType.TypeDescriptor)]
+    InstanceRelationships -> [(ResolveCompositionRequest.HolonType)-[CompositionSubject]->(HolonType.TypeDescriptor), (ResolveCompositionRequest.HolonType)-[PropertyValueHolder]->(HolonType.TypeDescriptor), (ResolveCompositionRequest.HolonType)-[CompositionTheme]->(Theme.HolonType), (ResolveCompositionRequest.HolonType)-[RequestedCompositionSlot]->(VisualizerSlot.HolonType), (ResolveCompositionRequest.HolonType)-[SelectedCollectionSource]->(RelationshipType.TypeDescriptor)]
   }
 }
 
@@ -4134,6 +4134,40 @@ inverse relationship (HolonType.TypeDescriptor)-[CompositionSubjectOf]->(Resolve
     display_name: "CompositionSubjectOf"
     display_plural: "CompositionSubjectOf entries"
     plural: "CompositionSubjectOfEntries"
+  }
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+}
+
+relationship (ResolveCompositionRequest.HolonType)-[PropertyValueHolder]->(HolonType.TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source ResolveCompositionRequest.HolonType
+  target HolonType.TypeDescriptor
+  deletion_semantic Allow
+  header {
+    description: "Holon holding the presented property, retained for contextual ValueType resolution."
+    display_name: "PropertyValueHolder"
+    display_plural: "PropertyValueHolder entries"
+    plural: "PropertyValueHolderEntries"
+  }
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+    HasInverse -> PropertyValueHolderOf
+  }
+}
+inverse relationship (HolonType.TypeDescriptor)-[PropertyValueHolderOf]->(ResolveCompositionRequest.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source HolonType.TypeDescriptor
+  target ResolveCompositionRequest.HolonType
+  deletion_semantic Allow
+  header {
+    description: "Derived inverse of the composition relationship."
+    display_name: "PropertyValueHolderOf"
+    display_plural: "PropertyValueHolderOf entries"
+    plural: "PropertyValueHolderOfEntries"
   }
   relationships {
     Constraints -> ZeroOrMore.CardinalityConstraint

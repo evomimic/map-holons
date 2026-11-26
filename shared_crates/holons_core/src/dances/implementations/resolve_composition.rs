@@ -27,6 +27,9 @@ pub fn invocation(
     body.add_related_holons(C::DescribedBy, vec![descriptor.into()])?;
     body.add_related_holons(R::CompositionSubject.to_relationship_name(), vec![request.subject])?;
     body.add_related_holons(R::CompositionTheme.to_relationship_name(), vec![request.theme])?;
+    if let Some(holder) = request.value_holder {
+        body.add_related_holons(R::PropertyValueHolder.to_relationship_name(), vec![holder])?;
+    }
     if let Some(slot) = request.demand_slot {
         body.add_related_holons(R::RequestedCompositionSlot.to_relationship_name(), vec![slot])?;
     }
@@ -65,6 +68,7 @@ pub fn invoke(
         .ok_or_else(|| HolonError::InvalidParameter("Missing composition request".into()))?;
     context
         .resolve_composition(CompositionRequest {
+            value_holder: optional(request, R::PropertyValueHolder)?,
             owner,
             subject: one(request, R::CompositionSubject)?,
             theme: one(request, R::CompositionTheme)?,

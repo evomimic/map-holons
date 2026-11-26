@@ -234,6 +234,7 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
         &context,
         TransactionAction::DiscoverVisualizers {
             request: map_commands_contract::VisualizerSelectionRequest {
+                value_holder: None,
                 subject: space.clone(),
                 requested_kind: map_commands_contract::VisualizerKind::Node,
                 owner: map_commands_contract::VisualizerOwner::Visualizer(saved(
@@ -262,6 +263,7 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
     };
     assert_eq!(string(&projection, "DiscoveryStopReason"), "holon_type_boundary");
     let explorer_request = || map_commands_contract::VisualizerSelectionRequest {
+        value_holder: None,
         subject: projection.clone(),
         requested_kind: map_commands_contract::VisualizerKind::Structure,
         owner: map_commands_contract::VisualizerOwner::Visualizer(saved(
@@ -342,6 +344,7 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
         ),
     ] {
         let selection_request = || map_commands_contract::VisualizerSelectionRequest {
+            value_holder: None,
             subject: subject.clone(),
             requested_kind: kind,
             owner: map_commands_contract::VisualizerOwner::Visualizer(saved(parent)),
@@ -688,7 +691,7 @@ async fn canonical_loader_preserves_authority_outcomes_and_isolation() {
         // re-bound, this case should be Rejected with the finding attached to the
         // staged descriptor, and the unattached-finding branch below must follow.
         (
-            r#"{"holons":[{"key":"Unattached.HolonType","type":"MetaHolonType.MetaTypeDescriptor","properties":{"TypeName":"Unattached","TypeNamePlural":"UnattachedTypes","DisplayName":"Unattached","DisplayNamePlural":"Unattached types","Description":"Unattached finding fixture"},"relationships":[{"name":"Extends","target":{"$ref":"HolonType.TypeDescriptor"}},{"name":"ComponentOf","target":{"$ref":"MAP Core Schema-v0.0.11"}},{"name":"InstanceProperties","target":{"$ref":"DanceDescription.PropertyType"}}]}]}"#,
+            r#"{"holons":[{"key":"Unattached.HolonType","type":"MetaHolonType.MetaTypeDescriptor","properties":{"TypeName":"Unattached","TypeNamePlural":"UnattachedTypes","DisplayName":"Unattached","DisplayNamePlural":"Unattached types","Description":"Unattached finding fixture"},"relationships":[{"name":"Extends","target":{"$ref":"HolonType.TypeDescriptor"}},{"name":"ComponentOf","target":{"$ref":"MAP Core Schema-v0.0.12"}},{"name":"InstanceProperties","target":{"$ref":"DanceDescription.PropertyType"}}]}]}"#,
             "Complete",
         ),
         (r#"{"holons":[{"key":"missing-target","type":"DoesNotExist.HolonType"}]}"#, "Skipped"),
@@ -1033,6 +1036,7 @@ async fn discovery_explanation_reads_existing_usage_without_committing(
         &context,
         TransactionAction::DiscoverVisualizers {
             request: map_commands_contract::VisualizerSelectionRequest {
+                value_holder: None,
                 subject: space,
                 requested_kind: map_commands_contract::VisualizerKind::Node,
                 owner: map_commands_contract::VisualizerOwner::Visualizer(saved(
@@ -1061,6 +1065,7 @@ async fn discovery_explanation_reads_existing_usage_without_committing(
         panic!("projection")
     };
     let request = map_commands_contract::VisualizerSelectionRequest {
+        value_holder: None,
         subject,
         requested_kind: map_commands_contract::VisualizerKind::Structure,
         owner: map_commands_contract::VisualizerOwner::Visualizer(saved(

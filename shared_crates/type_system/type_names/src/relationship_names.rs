@@ -250,6 +250,8 @@ impl CoreRelationshipTypeName {
 #[derive(Debug, Clone, Copy, VariantNames)]
 pub enum DahnRelationshipTypeName {
     CompositionSubject,
+    PropertyValueHolder,
+    PropertyValueHolderOf,
     CompositionTheme,
     RequestedCompositionSlot,
     SelectedCollectionSource,

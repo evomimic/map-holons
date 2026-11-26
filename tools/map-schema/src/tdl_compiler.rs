@@ -2256,7 +2256,7 @@ holon Example.HolonType {
 
         let root_json = fs::read_to_string(out_dir.join("core/root.json"))?;
         assert!(root_json.contains(r#""TypeName""#));
-        assert!(root_json.contains(r#""$ref": "MAP Core Schema-v0.0.11""#));
+        assert!(root_json.contains(r#""$ref": "MAP Core Schema-v0.0.12""#));
         assert!(!root_json.contains(r#""type_name""#));
         assert!(!root_json.contains(r#""InstanceTypeKind""#));
         assert!(root_json.contains(r#""meta""#));
@@ -2287,7 +2287,11 @@ holon Example.HolonType {
         };
         assert_eq!(
             targets(find(runtime_key), "DependsOn"),
-            vec!["MAP Core Schema-v0.0.11", "MAP Dance Schema-v0.1.4", "MAP Commands Schema-v0.1.4"]
+            vec![
+                "MAP Core Schema-v0.0.12",
+                "MAP Dance Schema-v0.1.4",
+                "MAP Commands Schema-v0.1.4"
+            ]
         );
         let contract = targets(find("EffectiveHolonDescriptor.HolonType"), "InstanceRelationships");
         for name in [
@@ -2723,7 +2727,7 @@ holon Example.HolonType {
             let value: Value = serde_json::from_str(&fs::read_to_string(&path)?)?;
             let has_map_core_schema = value["holons"]
                 .as_array()
-                .map(|holons| holons.iter().any(|holon| holon["key"] == "MAP Core Schema-v0.0.11"))
+                .map(|holons| holons.iter().any(|holon| holon["key"] == "MAP Core Schema-v0.0.12"))
                 .unwrap_or(false);
             if has_map_core_schema {
                 map_core_schema_files.push(path);
@@ -2810,7 +2814,7 @@ holon Example.HolonType {
             );
             assert_eq!(
                 targets(descriptor, "ComponentOf"),
-                serde_json::json!([{ "$ref": "MAP Core Schema-v0.0.11" }])
+                serde_json::json!([{ "$ref": "MAP Core Schema-v0.0.12" }])
             );
         }
         assert_eq!(declared["properties"]["DeletionSemantic"], "Allow");
@@ -2930,7 +2934,7 @@ holon Example.HolonType {
         assert!(exactly_one["relationships"].as_array().is_some_and(|relationships| {
             relationships.iter().any(|relationship| {
                 relationship["name"] == "RuleOf"
-                    && relationship["target"] == json!([{ "$ref": "MAP Core Schema-v0.0.11" }])
+                    && relationship["target"] == json!([{ "$ref": "MAP Core Schema-v0.0.12" }])
             })
         }));
         let applicability = root_holons

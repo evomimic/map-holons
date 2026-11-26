@@ -35,6 +35,7 @@ fn generate_fixtures() {
     let fixtures_dir = fixtures_dir();
     fs::create_dir_all(&fixtures_dir).expect("create fixtures dir");
     let selection_request = map_commands_wire::VisualizerSelectionRequestWire {
+        value_holder: None,
         subject: staged_reference(41, uuid_a()),
         requested_kind: map_commands_wire::VisualizerKindWire::Node,
         owner: map_commands_wire::VisualizerOwnerWire::Dancer(staged_reference(41, uuid_b())),

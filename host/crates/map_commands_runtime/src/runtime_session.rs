@@ -482,6 +482,7 @@ mod tests {
             .retain(
                 id,
                 map_commands_contract::VisualizerSelectionRequest {
+                    value_holder: None,
                     subject: retained.clone(),
                     requested_kind: map_commands_contract::VisualizerKind::Structure,
                     owner: map_commands_contract::VisualizerOwner::Visualizer(retained.clone()),

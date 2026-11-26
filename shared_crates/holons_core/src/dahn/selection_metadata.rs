@@ -180,13 +180,15 @@ fn saved_request(request: &VisualizerSelectionRequest) -> bool {
     let owner = match &request.owner {
         VisualizerOwner::Visualizer(owner) | VisualizerOwner::Dancer(owner) => owner,
     };
-    [&request.subject, &request.slot, &request.theme, owner]
-        .iter()
-        .all(|value| matches!(value, HolonReference::Smart(_)))
+    request.value_holder.as_ref().is_none_or(|h| matches!(h, HolonReference::Smart(_)))
+        && [&request.subject, &request.slot, &request.theme, owner]
+            .iter()
+            .all(|value| matches!(value, HolonReference::Smart(_)))
 }
 
 fn same_compatibility(a: &VisualizerSelectionRequest, b: &VisualizerSelectionRequest) -> bool {
-    a.slot == b.slot
+    a.value_holder == b.value_holder
+        && a.slot == b.slot
         && a.theme == b.theme
         && a.requested_kind == b.requested_kind
         && match (&a.owner, &b.owner) {

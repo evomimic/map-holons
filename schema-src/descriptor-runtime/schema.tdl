@@ -1,5 +1,5 @@
 schema "MAP Descriptor Runtime Schema-v0.1.4" {
-  depends_on "MAP Core Schema-v0.0.11"
+  depends_on "MAP Core Schema-v0.0.12"
   depends_on "MAP Dance Schema-v0.1.4"
   depends_on "MAP Commands Schema-v0.1.4"
   header {

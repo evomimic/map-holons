@@ -19,7 +19,7 @@
           "name": "DependsOn",
           "target": [
             {
-              "$ref": "MAP Core Schema-v0.0.11"
+              "$ref": "MAP Core Schema-v0.0.12"
             },
             {
               "$ref": "MAP Query Schema-v0.0.6"
