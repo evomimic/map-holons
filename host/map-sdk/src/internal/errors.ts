@@ -60,7 +60,8 @@ export class DomainError extends MapError {
   readonly payload: unknown;
 
   constructor(variant: string, payload: unknown, message?: string) {
-    super(message ?? `MAP domain error: ${variant}`);
+    const reason = typeof payload === 'string' && payload.length > 0 ? `: ${payload}` : '';
+    super(message ?? `MAP domain error: ${variant}${reason}`);
     this.variant = variant;
     this.payload = payload;
   }
