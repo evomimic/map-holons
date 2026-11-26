@@ -772,6 +772,7 @@ dependencies = [
  "hdk",
  "holons_core",
  "holons_prelude",
+ "serde_json",
  "tracing",
 ]
 

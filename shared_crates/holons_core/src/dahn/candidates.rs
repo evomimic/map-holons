@@ -400,7 +400,12 @@ pub fn usage_subject_type(
         VisualizerKind::Property | VisualizerKind::Action => request.subject.clone(),
         VisualizerKind::Collection => request.subject.holon_descriptor()?.holon().clone(),
         VisualizerKind::Value => {
-            PropertyDescriptor::from_holon(request.subject.clone()).value_type()?.holon().clone()
+            let property = PropertyDescriptor::from_holon(request.subject.clone());
+            if let Some(holder) = &request.value_holder {
+                property.contextual_value_type(holder)?.contextual
+            } else {
+                property.value_type()?.holon().clone()
+            }
         }
         VisualizerKind::TitleBar
         | VisualizerKind::Node

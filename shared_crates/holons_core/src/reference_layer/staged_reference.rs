@@ -10,7 +10,8 @@ use crate::core_shared_objects::transactions::{
     TransactionContext, TransactionContextHandle, TxId,
 };
 use crate::descriptors::{
-    effective_relationship_declaration, inheritance::described_by_descriptor,
+    effective_relationships::relationship_declaration_for_assembly,
+    inheritance::described_by_descriptor,
 };
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
@@ -139,7 +140,7 @@ impl StagedReference {
             RelationshipMutationEffect::PreserveLifecycle
         } else {
             RelationshipMutationEffect::from_definitional(
-                effective_relationship_declaration(&source, relationship_name.clone())?
+                relationship_declaration_for_assembly(&source, relationship_name.clone())?
                     .is_definitional()?,
             )
         };
@@ -472,7 +473,7 @@ impl StagedReference {
 
         let source_ref = HolonReference::Staged(self.clone());
         let relationship_descriptor =
-            match effective_relationship_declaration(&source_ref, relationship_name.clone()) {
+            match relationship_declaration_for_assembly(&source_ref, relationship_name.clone()) {
                 Ok(descriptor) => descriptor,
                 // A new holon has no descriptor until one is explicitly attached.
                 // Relationship staging remains descriptor-independent at this point;
@@ -532,7 +533,7 @@ impl StagedReference {
         }
 
         let source_ref = HolonReference::Staged(self.clone());
-        match effective_relationship_declaration(&source_ref, relationship_name.clone()) {
+        match relationship_declaration_for_assembly(&source_ref, relationship_name.clone()) {
             Ok(relationship_descriptor) => Ok(RelationshipMutationEffect::from_definitional(
                 relationship_descriptor.is_definitional()?,
             )),
@@ -772,7 +773,7 @@ impl StagedReference {
         let relationship_name = relationship_name.to_relationship_name();
         let source = HolonReference::from(self.clone());
         let classification =
-            match effective_relationship_declaration(&source, relationship_name.clone()) {
+            match relationship_declaration_for_assembly(&source, relationship_name.clone()) {
                 Ok(declaration) => declaration.is_definitional(),
                 Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
                     if kind == "relationship" && name == relationship_name.to_string() =>

@@ -1,5 +1,5 @@
 schema "MAP Meta Design System Schema-v0.1.4" {
-  depends_on "MAP Core Schema-v0.0.11"
+  depends_on "MAP Core Schema-v0.0.12"
   depends_on "MAP Design Tokens Schema-v0.1.4"
   header {
     description: "MAP schema for versioned Meta Design Systems that define reusable semantic DesignToken vocabularies."

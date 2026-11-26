@@ -309,7 +309,7 @@ fn validate_affording_holon_contract(
 ) -> Result<(), HolonError> {
     if let Some(affording_descriptor) = bound_invocation.affording_holon_descriptor() {
         affording_descriptor
-            .get_dance_by_name(bound_invocation.dance_descriptor().dance_name()?)?;
+            .get_dance_by_name_for_assembly(bound_invocation.dance_descriptor().dance_name()?)?;
     }
 
     // TODO: once the schema exposes an explicit affording-holon requirement,

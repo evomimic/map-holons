@@ -135,6 +135,7 @@ pub fn select_home_dancer(
         match crate::select_visualizer(
             context,
             VisualizerSelectionRequest {
+                value_holder: None,
                 subject: selection_context.active_holon_space.clone(),
                 requested_kind: VisualizerKind::RootedNavigation,
                 owner: VisualizerOwner::Dancer(candidate.clone()),
@@ -156,6 +157,7 @@ pub fn select_home_dancer(
                 let root_node_visualizer = crate::select_visualizer(
                     context,
                     VisualizerSelectionRequest {
+                        value_holder: None,
                         subject: selection_context.active_holon_space.clone(),
                         requested_kind: VisualizerKind::Node,
                         owner: VisualizerOwner::Visualizer(rooted_navigation_visualizer.clone()),

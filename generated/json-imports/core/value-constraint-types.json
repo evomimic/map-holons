@@ -37,7 +37,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Core Schema-v0.0.11"
+              "$ref": "MAP Core Schema-v0.0.12"
             }
           ]
         },
@@ -91,7 +91,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Core Schema-v0.0.11"
+              "$ref": "MAP Core Schema-v0.0.12"
             }
           ]
         },
@@ -145,7 +145,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Core Schema-v0.0.11"
+              "$ref": "MAP Core Schema-v0.0.12"
             }
           ]
         },
@@ -199,7 +199,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Core Schema-v0.0.11"
+              "$ref": "MAP Core Schema-v0.0.12"
             }
           ]
         },
@@ -253,7 +253,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Core Schema-v0.0.11"
+              "$ref": "MAP Core Schema-v0.0.12"
             }
           ]
         },

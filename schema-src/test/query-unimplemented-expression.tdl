@@ -4,7 +4,7 @@ meta {
 }
 
 schema QueryUnimplementedExpressionTestSchema {
-  depends_on "MAP Core Schema-v0.0.11"
+  depends_on "MAP Core Schema-v0.0.12"
   depends_on "MAP Query Schema-v0.0.6"
   header {
     description: "Sweettest-only concrete QueryExpression with no operator implementation. Gives QRY1 lifecycle and QueryDance adapter tests a structurally valid query root without adding a production operator."

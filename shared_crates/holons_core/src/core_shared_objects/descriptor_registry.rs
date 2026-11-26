@@ -549,6 +549,14 @@ mod tests {
         )?;
         descriptor
             .add_related_holons(CoreRelationshipTypeName::EffectiveConstraints, vec![saved])?;
+        descriptor.with_property_value(
+            "PreparedSchema",
+            serde_json::to_string(&crate::descriptors::PreparedSchema {
+                instance_deletion_allowed: Some(Ok(false)),
+                ..Default::default()
+            })
+            .unwrap(),
+        )?;
         descriptor.mark_as_immutable()?;
         Ok((
             registry,
@@ -654,6 +662,9 @@ mod tests {
         let wrapper = crate::descriptors::HolonDescriptor::from_holon(saved.clone());
         let selected = wrapper.effective_descriptor()?;
         let before = registry.context()?.lookup().transient_count()?;
+        let independent = crate::descriptors::HolonDescriptor::from_holon(saved.clone());
+        assert!(!wrapper.instance_deletion_allowed()?);
+        assert!(!independent.instance_deletion_allowed()?);
         assert_eq!(selected.effective_constraints()?.len(), 1);
         assert_eq!(wrapper.effective_descriptor()?.holon(), selected.holon());
         assert_eq!(registry.context()?.lookup().transient_count()?, before);
@@ -662,12 +673,21 @@ mod tests {
         assert!(matches!(selected.effective_constraints(), Err(HolonError::ObsoleteSession)));
         assert!(matches!(selected.described_holon_type(), Err(HolonError::ObsoleteSession)));
         assert!(registry.get(&target)?.is_none());
+        assert!(matches!(selected.instance_deletion_allowed(), Err(HolonError::ObsoleteSession)));
         let owner = registry.context()?;
         let mut next = owner.mutation().new_holon(None)?;
         next.add_related_holons(CoreRelationshipTypeName::DescribedHolonType, vec![saved.clone()])?;
         next.add_related_holons(
             CoreRelationshipTypeName::EffectiveConstraints,
             vec![saved.clone(), saved],
+        )?;
+        next.with_property_value(
+            "PreparedSchema",
+            serde_json::to_string(&crate::descriptors::PreparedSchema {
+                instance_deletion_allowed: Some(Ok(true)),
+                ..Default::default()
+            })
+            .unwrap(),
         )?;
         next.mark_as_immutable()?;
         registry.publish(
@@ -678,6 +698,8 @@ mod tests {
         assert_ne!(replacement.holon(), selected.holon());
         assert_eq!(replacement.described_holon_type()?.holon().holon_id()?, target);
         assert_eq!(replacement.effective_constraints()?.len(), 2);
+        assert!(wrapper.instance_deletion_allowed()?);
+        assert!(independent.instance_deletion_allowed()?);
         Ok(())
     }
 

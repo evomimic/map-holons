@@ -18,7 +18,7 @@
 //!   *available* on a concrete holon depends on the source reference state:
 //!   declared relationships are always available, while inverse relationships
 //!   require a committed source (inverse SmartLinks are populated at commit).
-//!   See [`crate::reference_layer::ReadableHolon::available_relationships`].
+//!   See [`crate::descriptors::EffectiveHolonDescriptor::available_relationships`].
 //! * **Optimization semantics** — mapping a requested relationship onto a
 //!   concrete access path (e.g. rewriting an inverse navigation as a reverse
 //!   scan of the declared relationship) is a future query-planning concern and
@@ -60,11 +60,6 @@ struct NavigationCandidate {
     // Identity of the matched descriptor, used to dedupe candidates reached
     // through multiple discovery paths.
     descriptor_id: String,
-}
-
-struct CandidateSet {
-    candidates: Vec<NavigationCandidate>,
-    requires_materialized_source_index: bool,
 }
 
 /// Enumerates effective declared relationships for `endpoint`.
@@ -208,6 +203,7 @@ fn collect_declared_from_relationship_members(
 ///
 /// This uses the materialized `SourceOf` index and therefore keeps the staged
 /// guard when the endpoint is unsaved and the index is empty.
+#[cfg(test)]
 pub(crate) fn effective_inverse_relationships(
     endpoint: &HolonDescriptor,
 ) -> Result<Vec<InverseRelationshipDescriptor>, HolonError> {
@@ -223,42 +219,6 @@ pub(crate) fn effective_inverse_relationships(
     Ok(set.inverse_descriptors)
 }
 
-/// Enumerates the effective outbound relationships for `endpoint`.
-///
-/// The result is the union of:
-/// * declared relationships licensed on this type (or inherited) via
-///   `InstanceRelationships`, and
-/// * inverse relationships whose `SourceType` is this type, discovered through
-///   the materialized `SourceOf` index on each source ancestor.
-///
-/// Errors with `UnsupportedStagedTraversal` when `endpoint` is unsaved and the
-/// `SourceOf` index is empty: the inverse portion of the enumeration is not
-/// answerable yet. Callers needing a staged-safe declared-only enumeration
-/// should use [`HolonDescriptor::effective_declared_relationships`] (or
-/// [`crate::reference_layer::ReadableHolon::available_relationships`] for a
-/// concrete source holon).
-#[cfg(test)]
-pub(crate) fn effective_relationships(
-    endpoint: &HolonDescriptor,
-) -> Result<Vec<QualifiedRelationship>, HolonError> {
-    let mut relationships = effective_declared_relationships(endpoint)?
-        .into_iter()
-        .map(|declared| QualifiedRelationship {
-            descriptor: RelationshipDescriptor::from_holon(declared.holon().clone()),
-            descriptor_direction: RelationshipDirection::Declared,
-        })
-        .collect::<Vec<_>>();
-
-    relationships.extend(effective_inverse_relationships(endpoint)?.into_iter().map(|inverse| {
-        QualifiedRelationship {
-            descriptor: RelationshipDescriptor::from_holon(inverse.holon().clone()),
-            descriptor_direction: RelationshipDirection::Inverse,
-        }
-    }));
-
-    Ok(relationships)
-}
-
 /// Finds the declared relationship that licenses `name` on `source_holon`.
 ///
 /// Candidates come exclusively from the contract that describes the source
@@ -270,16 +230,27 @@ pub fn effective_relationship_declaration(
     source_holon: &HolonReference,
     name: impl ToRelationshipName,
 ) -> Result<RelationshipDescriptor, HolonError> {
+    let descriptor =
+        source_holon.effective_descriptor()?.get_declared_relationship_by_name(name)?;
+    Ok(RelationshipDescriptor::from_holon(descriptor.holon().clone()))
+}
+
+/// Resolves an authored declaration while assembling schema or classifying staged changes.
+/// These operations construct preparation requests and must not recursively acquire a product.
+/// A published product may be reused, but its absence never initiates construction here.
+pub(crate) fn relationship_declaration_for_assembly(
+    source_holon: &HolonReference,
+    name: impl ToRelationshipName,
+) -> Result<RelationshipDescriptor, HolonError> {
     let requested_name = name.to_relationship_name();
     let requested = requested_name.to_string();
 
     let source_type = source_holon.holon_descriptor()?;
-    let declarations = match super::EffectiveHolonDescriptor::find_prepared(source_type.holon())? {
-        Some(prepared) => prepared.instance_relationships()?,
-        // Mutation classification participates in schema assembly and must not
-        // initiate the Dance whose own construction requires these operations.
-        None => effective_declared_relationships(&source_type)?,
-    };
+    if let Some(prepared) = super::EffectiveHolonDescriptor::find_prepared(source_type.holon())? {
+        let descriptor = prepared.get_declared_relationship_by_name(&requested_name)?;
+        return Ok(RelationshipDescriptor::from_holon(descriptor.holon().clone()));
+    }
+    let declarations = effective_declared_relationships(&source_type)?;
     for descriptor in declarations {
         if descriptor.base_relationship_name()? == requested_name {
             return Ok(RelationshipDescriptor::from_holon(descriptor.holon().clone()));
@@ -293,15 +264,6 @@ pub fn effective_relationship_declaration(
     })
 }
 
-/// Enumerates declared relationships licensed by the source holon's describing
-/// contract, `D(H)`.
-pub(crate) fn effective_declared_relationships_for_holon(
-    source_holon: &HolonReference,
-) -> Result<Vec<DeclaredRelationshipDescriptor>, HolonError> {
-    let source_descriptor = source_holon.holon_descriptor()?;
-    effective_declared_relationships(&source_descriptor)
-}
-
 /// Binds fetched membership to an exact relationship version in the retrieval guest.
 /// Includes the describing contract and descriptor endpoint ancestry. This is not
 /// a cache callback: it may read schema, entirely within the existing guest request.
@@ -310,7 +272,7 @@ pub(crate) fn bind_relationship_policy(
     name: &RelationshipName,
 ) -> Result<crate::core_shared_objects::relationship_fetch::RelationshipPolicyBinding, HolonError> {
     let source_type = source.holon_descriptor()?;
-    let mut candidates = collect_candidates(&source_type)?.candidates;
+    let mut candidates = collect_candidates(&source_type)?;
     let parents = source.related_holons(CoreRelationshipTypeName::Extends)?;
     let has_parent = !parents
         .read()
@@ -365,51 +327,9 @@ pub(crate) fn bind_relationship_policy(
     })
 }
 
-/// Resolves `relationship_name` as effective outbound navigation from `endpoint`.
-///
-/// Matches the requested name against inherited declared and inverse effective
-/// relationships (see [`effective_relationships`]). This is navigation
-/// resolution, not authorization or authored-occurrence validation.
-pub(crate) fn resolve_available_relationship(
-    endpoint: &HolonDescriptor,
-    relationship_name: RelationshipName,
-) -> Result<QualifiedRelationship, HolonError> {
-    let set = collect_candidates(endpoint)?;
-
-    let mut matches: Vec<NavigationCandidate> = set
-        .candidates
-        .into_iter()
-        .filter(|candidate| candidate.name == relationship_name)
-        .collect();
-
-    if matches.len() == 1 {
-        return Ok(matches.remove(0).qualified);
-    }
-
-    if matches.len() > 1 {
-        return Err(HolonError::AmbiguousRelationshipTraversal {
-            relationship: relationship_name.to_string(),
-            descriptor: accessor_helpers::descriptor_label(endpoint.holon()),
-        });
-    }
-
-    if set.requires_materialized_source_index {
-        return Err(HolonError::UnsupportedStagedTraversal {
-            relationship: relationship_name.to_string(),
-            descriptor: accessor_helpers::descriptor_label(endpoint.holon()),
-        });
-    }
-
-    Err(HolonError::DescriptorDeclarationNotFound {
-        kind: "relationship".to_string(),
-        name: relationship_name.to_string(),
-        descriptor: accessor_helpers::descriptor_label(endpoint.holon()),
-    })
-}
-
 /// Combines the declared contract with both directions of the indexed outbound
 /// vocabulary, matching the relationships exposed by prepared navigation.
-fn collect_candidates(endpoint: &HolonDescriptor) -> Result<CandidateSet, HolonError> {
+fn collect_candidates(endpoint: &HolonDescriptor) -> Result<Vec<NavigationCandidate>, HolonError> {
     let mut candidates: Vec<NavigationCandidate> = Vec::new();
 
     for declared in effective_declared_relationships(endpoint)? {
@@ -460,15 +380,13 @@ fn collect_candidates(endpoint: &HolonDescriptor) -> Result<CandidateSet, HolonE
         );
     }
 
-    Ok(CandidateSet {
-        candidates,
-        requires_materialized_source_index: inverse_set.requires_materialized_source_index,
-    })
+    Ok(candidates)
 }
 
 struct SourceIndexCandidates {
     declared_descriptors: Vec<DeclaredRelationshipDescriptor>,
     inverse_descriptors: Vec<InverseRelationshipDescriptor>,
+    #[cfg(test)]
     requires_materialized_source_index: bool,
 }
 
@@ -482,6 +400,7 @@ fn collect_source_index_candidates(
     // SourceOf is the materialized inverse of each descriptor's SourceType.
     // Read each source ancestor's local index: SourceOf membership itself is
     // not inherited, but relationships may accept instances of subtypes.
+    #[cfg(test)]
     let mut has_index = false;
     for ancestor in crate::descriptors::walk_extends_chain(endpoint.holon()) {
         let members = ancestor?.related_holons(CoreRelationshipTypeName::SourceOf)?;
@@ -490,7 +409,10 @@ fn collect_source_index_candidates(
             .map_err(|_| HolonError::InvalidState("SourceOf collection lock poisoned".into()))?
             .get_members()
             .clone();
-        has_index |= !members.is_empty();
+        #[cfg(test)]
+        {
+            has_index |= !members.is_empty();
+        }
         for member in members {
             let inverse = match InverseRelationshipDescriptor::try_from_holon(member.clone()) {
                 Ok(inverse) => inverse,
@@ -513,6 +435,7 @@ fn collect_source_index_candidates(
     Ok(SourceIndexCandidates {
         declared_descriptors,
         inverse_descriptors,
+        #[cfg(test)]
         requires_materialized_source_index: !has_index && !endpoint.holon().is_saved(),
     })
 }
@@ -750,20 +673,6 @@ mod tests {
         Ok(RelationshipPairFixture { source_type, target_type, declared, inverse })
     }
 
-    fn qualified_names(
-        relationships: &[QualifiedRelationship],
-    ) -> Result<Vec<(String, RelationshipDirection)>, HolonError> {
-        relationships
-            .iter()
-            .map(|qualified| {
-                Ok((
-                    qualified.descriptor.base_relationship_name()?.to_string(),
-                    qualified.descriptor_direction,
-                ))
-            })
-            .collect()
-    }
-
     #[test]
     fn resolved_navigation_includes_source_index_only_declarations_and_deduplicates_paths(
     ) -> Result<(), HolonError> {
@@ -819,47 +728,6 @@ mod tests {
     }
 
     #[test]
-    fn resolve_available_relationship_resolves_declared_name_outbound() -> Result<(), HolonError> {
-        let context = build_context();
-        let fixture = build_relationship_pair(
-            &context,
-            "source-declared",
-            "AuthoredBy",
-            "Authors",
-            true,
-            false,
-        )?;
-        let descriptor = HolonDescriptor::from_holon(fixture.source_type.into());
-
-        let qualified = descriptor.resolve_available_relationship("authored_by")?;
-        assert_eq!(qualified.descriptor_direction, RelationshipDirection::Declared);
-        assert_eq!(qualified.descriptor.base_relationship_name()?, relationship_name("AuthoredBy"));
-
-        Ok(())
-    }
-
-    #[test]
-    fn resolve_available_relationship_resolves_inverse_name_outbound_from_target_type(
-    ) -> Result<(), HolonError> {
-        let context = build_context();
-        let fixture = build_relationship_pair(
-            &context,
-            "target-inverse",
-            "AuthoredBy",
-            "Authors",
-            true,
-            true,
-        )?;
-        let descriptor = HolonDescriptor::from_holon(fixture.target_type.into());
-
-        let qualified = descriptor.resolve_available_relationship("authors")?;
-        assert_eq!(qualified.descriptor_direction, RelationshipDirection::Inverse);
-        assert_eq!(qualified.descriptor.base_relationship_name()?, relationship_name("Authors"));
-
-        Ok(())
-    }
-
-    #[test]
     fn effective_inverse_relationships_ignores_declared_descriptors_in_source_of_index(
     ) -> Result<(), HolonError> {
         let context = build_context();
@@ -884,163 +752,6 @@ mod tests {
         let relationships = descriptor.effective_inverse_relationships()?;
         assert_eq!(relationships.len(), 1);
         assert_eq!(relationships[0].base_relationship_name()?, relationship_name("Authors"));
-
-        Ok(())
-    }
-
-    #[test]
-    fn distinct_operator_inverse_names_resolve_without_ambiguity() -> Result<(), HolonError> {
-        let context = build_context();
-        let mut value_operator = build_relationship_pair(
-            &context,
-            "value-operator",
-            "AffordsOperator",
-            "ValueTypeAffordedBy",
-            true,
-            false,
-        )?;
-        let validation_operator = build_relationship_pair(
-            &context,
-            "validation-operator",
-            "AffordsOperator",
-            "ValidationRuleAffordedBy",
-            true,
-            false,
-        )?;
-
-        value_operator.target_type.add_related_holons(
-            CoreRelationshipTypeName::Extends,
-            vec![HolonReference::from(&validation_operator.target_type)],
-        )?;
-        value_operator.target_type.add_related_holons(
-            CoreRelationshipTypeName::SourceOf,
-            vec![
-                HolonReference::from(&value_operator.inverse),
-                HolonReference::from(&validation_operator.inverse),
-            ],
-        )?;
-        let operator_descriptor = HolonDescriptor::from_holon(value_operator.target_type.into());
-
-        let value_inverse =
-            operator_descriptor.resolve_available_relationship("ValueTypeAffordedBy")?;
-        assert_eq!(value_inverse.descriptor_direction, RelationshipDirection::Inverse);
-        assert_eq!(
-            value_inverse.descriptor.base_relationship_name()?,
-            relationship_name("ValueTypeAffordedBy")
-        );
-
-        let validation_inverse =
-            operator_descriptor.resolve_available_relationship("ValidationRuleAffordedBy")?;
-        assert_eq!(validation_inverse.descriptor_direction, RelationshipDirection::Inverse);
-        assert_eq!(
-            validation_inverse.descriptor.base_relationship_name()?,
-            relationship_name("ValidationRuleAffordedBy")
-        );
-
-        Ok(())
-    }
-
-    #[test]
-    fn resolve_available_relationship_reports_not_found_for_unknown_name_on_saved_index(
-    ) -> Result<(), HolonError> {
-        let context = build_context();
-        let fixture =
-            build_relationship_pair(&context, "unknown-name", "AuthoredBy", "Authors", true, true)?;
-        let descriptor = HolonDescriptor::from_holon(fixture.target_type.into());
-
-        assert!(matches!(
-            descriptor.resolve_available_relationship("missing_relationship"),
-            Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
-                if kind == "relationship" && name == "MissingRelationship"
-        ));
-
-        Ok(())
-    }
-
-    #[test]
-    fn declared_name_is_not_effective_outbound_from_target_type() -> Result<(), HolonError> {
-        let context = build_context();
-        let fixture = build_relationship_pair(
-            &context,
-            "declared-from-target",
-            "AuthoredBy",
-            "Authors",
-            true,
-            true,
-        )?;
-        let descriptor = HolonDescriptor::from_holon(fixture.target_type.into());
-
-        // The declared relationship's SourceType is the source type, so it is
-        // not outbound from the target type; only the inverse name is.
-        assert!(matches!(
-            descriptor.resolve_available_relationship("authored_by"),
-            Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
-                if kind == "relationship" && name == "AuthoredBy"
-        ));
-
-        Ok(())
-    }
-
-    #[test]
-    fn declared_source_index_member_does_not_supply_an_inverse() -> Result<(), HolonError> {
-        let context = build_context();
-        let declared_type = new_descriptor_holon(
-            &context,
-            "missing-inverse-declared-type",
-            &core_holon_type_name(CoreHolonTypeName::DeclaredRelationshipType),
-            "Relationship",
-        )?;
-        let mut source_type =
-            new_holon_type_descriptor(&context, "missing-inverse-source", "BookType")?;
-        let mut target_type =
-            new_holon_type_descriptor(&context, "missing-inverse-target", "PersonType")?;
-        let mut declared = new_relationship_descriptor_holon(
-            &context,
-            "missing-inverse-authored-by",
-            "AuthoredBy",
-            HolonReference::from(&source_type),
-            HolonReference::from(&target_type),
-        )?;
-
-        declared
-            .add_related_holons(CoreRelationshipTypeName::Extends, vec![declared_type.into()])?;
-        source_type.add_related_holons(
-            CoreRelationshipTypeName::InstanceRelationships,
-            vec![(&declared).into()],
-        )?;
-        target_type
-            .add_related_holons(CoreRelationshipTypeName::SourceOf, vec![declared.into()])?;
-
-        let descriptor = HolonDescriptor::from_holon(target_type.into());
-
-        assert!(matches!(
-            descriptor.resolve_available_relationship("authors"),
-            Err(HolonError::DescriptorDeclarationNotFound { .. })
-        ));
-
-        Ok(())
-    }
-
-    #[test]
-    fn inherited_source_owned_relationships_are_discovered() -> Result<(), HolonError> {
-        let context = build_context();
-        let fixture = build_relationship_pair(
-            &context,
-            "inherited-source",
-            "AuthoredBy",
-            "Authors",
-            true,
-            false,
-        )?;
-        let mut child = new_holon_type_descriptor(&context, "child-book-type", "ChildBookType")?;
-        child.add_related_holons(
-            CoreRelationshipTypeName::Extends,
-            vec![HolonReference::from(&fixture.source_type)],
-        )?;
-        let descriptor = HolonDescriptor::from_holon(child.into());
-
-        let qualified = descriptor.resolve_available_relationship("authored_by")?;
-        assert_eq!(qualified.descriptor_direction, RelationshipDirection::Declared);
 
         Ok(())
     }
@@ -1171,165 +882,6 @@ mod tests {
             descriptor.effective_declared_relationships(),
             Err(HolonError::DuplicateInheritedDeclaration { kind, name, .. })
                 if kind == "relationship" && name == "AuthoredBy"
-        ));
-
-        Ok(())
-    }
-
-    #[test]
-    fn inverse_relationships_are_found_in_ancestor_source_indexes() -> Result<(), HolonError> {
-        let context = build_context();
-        let fixture = build_relationship_pair(
-            &context,
-            "target-anchor",
-            "AuthoredBy",
-            "Authors",
-            true,
-            true,
-        )?;
-        let mut child_target =
-            new_holon_type_descriptor(&context, "author-target-type", "AuthorType")?;
-        child_target.add_related_holons(
-            CoreRelationshipTypeName::Extends,
-            vec![HolonReference::from(&fixture.target_type)],
-        )?;
-        let descriptor = HolonDescriptor::from_holon(child_target.into());
-
-        let qualified = descriptor.resolve_available_relationship("authors")?;
-        assert_eq!(qualified.descriptor_direction, RelationshipDirection::Inverse);
-
-        Ok(())
-    }
-
-    #[test]
-    fn inverse_source_index_does_not_require_target_contract_traversal() -> Result<(), HolonError> {
-        let context = build_context();
-        let fixture = build_relationship_pair(
-            &context,
-            "source-index",
-            "AuthoredBy",
-            "Authors",
-            false,
-            true,
-        )?;
-        let descriptor = HolonDescriptor::from_holon(fixture.target_type.into());
-        assert_eq!(
-            descriptor.resolve_available_relationship("authors")?.descriptor_direction,
-            RelationshipDirection::Inverse
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn ambiguous_distinct_inverse_matches_fail() -> Result<(), HolonError> {
-        let context = build_context();
-        let mut first = build_relationship_pair(
-            &context,
-            "ambiguous-one",
-            "AuthoredBy",
-            "Authors",
-            true,
-            false,
-        )?;
-        let second =
-            build_relationship_pair(&context, "ambiguous-two", "EditedBy", "Authors", true, false)?;
-        first.target_type.add_related_holons(
-            CoreRelationshipTypeName::Extends,
-            vec![HolonReference::from(&second.target_type)],
-        )?;
-        first.target_type.add_related_holons(
-            CoreRelationshipTypeName::SourceOf,
-            vec![HolonReference::from(&first.inverse), HolonReference::from(&second.inverse)],
-        )?;
-        let descriptor = HolonDescriptor::from_holon(first.target_type.into());
-
-        assert!(matches!(
-            descriptor.resolve_available_relationship("authors"),
-            Err(HolonError::AmbiguousRelationshipTraversal { relationship, .. })
-                if relationship == "Authors"
-        ));
-
-        Ok(())
-    }
-
-    #[test]
-    fn staged_endpoint_without_source_of_index_is_guarded() -> Result<(), HolonError> {
-        let context = build_context();
-        let fixture = build_relationship_pair(
-            &context,
-            "staged-target",
-            "AuthoredBy",
-            "Authors",
-            true,
-            false,
-        )?;
-        let staged_target = context.mutation().stage_new_holon(fixture.target_type)?;
-        let descriptor = HolonDescriptor::from_holon(staged_target.into());
-
-        assert!(matches!(
-            descriptor.resolve_available_relationship("authors"),
-            Err(HolonError::UnsupportedStagedTraversal { relationship, .. })
-                if relationship == "Authors"
-        ));
-
-        Ok(())
-    }
-
-    #[test]
-    fn effective_relationships_enumerates_declared_and_inverse() -> Result<(), HolonError> {
-        let context = build_context();
-        // Outbound from PersonType: an inverse (Authors, from being the target
-        // of AuthoredBy) and a declared relationship of its own (MemberOf).
-        let fixture =
-            build_relationship_pair(&context, "enumerate", "AuthoredBy", "Authors", true, true)?;
-        let club_type = new_holon_type_descriptor(&context, "club-type", "ClubType")?;
-        let declared_type = new_descriptor_holon(
-            &context,
-            "enumerate-member-of-type",
-            &core_holon_type_name(CoreHolonTypeName::DeclaredRelationshipType),
-            "Relationship",
-        )?;
-        let mut member_of = new_relationship_descriptor_holon(
-            &context,
-            "enumerate-member-of",
-            "MemberOf",
-            HolonReference::from(&fixture.target_type),
-            HolonReference::from(&club_type),
-        )?;
-        member_of
-            .add_related_holons(CoreRelationshipTypeName::Extends, vec![declared_type.into()])?;
-        fixture.target_type.clone().add_related_holons(
-            CoreRelationshipTypeName::InstanceRelationships,
-            vec![member_of.into()],
-        )?;
-
-        let descriptor = HolonDescriptor::from_holon(fixture.target_type.into());
-        let names = qualified_names(&descriptor.effective_relationships()?)?;
-
-        assert!(names.contains(&("MemberOf".to_string(), RelationshipDirection::Declared)));
-        assert!(names.contains(&("Authors".to_string(), RelationshipDirection::Inverse)));
-        assert_eq!(names.len(), 2);
-
-        Ok(())
-    }
-
-    #[test]
-    fn effective_relationships_guards_unsaved_endpoint_without_index() -> Result<(), HolonError> {
-        let context = build_context();
-        let fixture = build_relationship_pair(
-            &context,
-            "enumerate-staged",
-            "AuthoredBy",
-            "Authors",
-            true,
-            false,
-        )?;
-        let staged_target = context.mutation().stage_new_holon(fixture.target_type)?;
-        let descriptor = HolonDescriptor::from_holon(staged_target.into());
-
-        assert!(matches!(
-            descriptor.effective_relationships(),
-            Err(HolonError::UnsupportedStagedTraversal { .. })
         ));
 
         Ok(())

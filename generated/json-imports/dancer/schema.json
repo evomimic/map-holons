@@ -12,13 +12,13 @@
           "name": "DependsOn",
           "target": [
             {
-              "$ref": "MAP Core Schema-v0.0.11"
+              "$ref": "MAP Core Schema-v0.0.12"
             },
             {
               "$ref": "MAP Dance Schema-v0.1.4"
             },
             {
-              "$ref": "MAP DAHN Schema-v0.1.4"
+              "$ref": "MAP DAHN Schema-v0.1.5"
             }
           ]
         }

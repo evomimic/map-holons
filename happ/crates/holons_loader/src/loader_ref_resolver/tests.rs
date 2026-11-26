@@ -23,6 +23,70 @@ impl HolonServiceApi for SavedSourceService {
         self
     }
 
+    /// Saved promotion acquires its authored contract through ordinary EHD lookup.
+    /// These storage fixtures omit the Descriptor Runtime package; project their
+    /// contract at the mock service boundary, retaining saved declaring origins.
+    fn construct_effective_holon_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<holons_core::descriptors::EffectiveHolonDescriptor, HolonError> {
+        use holons_core::descriptors::{
+            ComputedEffectiveSchema, Descriptor, EffectiveHolonDescriptor, PreparedRelationship,
+            PreparedSchema, RelationshipDescriptor,
+        };
+        use CoreRelationshipTypeName as R;
+
+        let schema = ComputedEffectiveSchema::resolve(&target)?;
+        let mut prepared = PreparedSchema {
+            lineage: schema
+                .lineage
+                .iter()
+                .map(ReadableHolon::holon_id)
+                .collect::<Result<_, _>>()?,
+            ..Default::default()
+        };
+        for occurrence in schema.contributions(R::InstanceRelationships) {
+            let descriptor = RelationshipDescriptor::from_holon(occurrence.member.clone());
+            prepared.relationships.push(PreparedRelationship {
+                identity: descriptor.holon().full_reference_id_string(),
+                name: descriptor.base_relationship_name()?,
+                policy: holons_core::RelationshipCachePolicy::Fresh,
+                updateable: true,
+            });
+        }
+        let mut result = context.mutation().new_holon(None)?;
+        result.add_related_holons(R::DescribedHolonType, vec![target])?;
+        for (source, product) in [
+            (R::InstanceProperties, R::EffectiveInstanceProperties),
+            (R::InstanceRelationships, R::EffectiveInstanceRelationships),
+            (R::AffordsDance, R::EffectiveAffordsDance),
+            (R::AffordsCommand, R::EffectiveAffordsCommand),
+            (R::ValidationBindings, R::EffectiveValidationBindings),
+            (R::Constraints, R::EffectiveConstraints),
+            (R::InstanceKeyRule, R::EffectiveInstanceKeyRule),
+        ] {
+            let entries = schema.contributions(source);
+            result.add_related_holons(
+                product,
+                entries.iter().map(|entry| entry.member.clone()).collect(),
+            )?;
+            prepared.origins.push(
+                entries
+                    .iter()
+                    .map(|entry| Ok((entry.declared_on.holon_id()?, entry.local_position)))
+                    .collect::<Result<_, HolonError>>()?,
+            );
+        }
+        result.with_property_value(
+            "PreparedSchema",
+            serde_json::to_string(&prepared)
+                .map_err(|error| HolonError::InvalidParameter(error.to_string()))?,
+        )?;
+        result.mark_as_immutable()?;
+        Ok(EffectiveHolonDescriptor::from_constructed_holon(result.into()))
+    }
+
     fn relationship_cache_policy(
         &self,
         _: &Arc<TransactionContext>,
@@ -453,7 +517,11 @@ fn assembly_allows_declarations_before_or_after_their_use() {
             f.book.related_holons("AuthoredBy").unwrap().read().unwrap().get_members(),
             &vec![HolonReference::from(&f.person)]
         );
-        effective_relationship_declaration(&(&f.book).into(), "AuthoredBy").unwrap();
+        // Assembly must remain usable before the Descriptor Runtime schema exists.
+        holons_core::descriptors::ComputedEffectiveSchema::resolve(&(&f.book_type).into())
+            .unwrap()
+            .get_relationship_by_name("AuthoredBy")
+            .unwrap();
         assert_eq!(result.metrics.assembly.endpoint_resolution_calls, 2);
     }
 }

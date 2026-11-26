@@ -11,6 +11,8 @@ pub enum VisualizerOwner {
 #[derive(Debug, Clone)]
 pub struct VisualizerSelectionRequest {
     pub subject: HolonReference,
+    /// Holon holding the presented property; never a caller-selected replacement type.
+    pub value_holder: Option<HolonReference>,
     pub requested_kind: VisualizerKind,
     pub owner: VisualizerOwner,
     pub slot: HolonReference,

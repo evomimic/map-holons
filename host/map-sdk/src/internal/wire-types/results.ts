@@ -26,6 +26,7 @@ export function isDescribedHolonCollectionWire(value: unknown): value is Describ
 }
 
 export interface CompositionBindingWire {
+  value_holder?: number | null;
   parent: number | null; owner: number; slot: number; subject: number; subject_descriptor: number;
   subject_binding: 'OwnerSubject' | 'ScalarPropertyLabel' | 'ScalarPropertyValue' | 'AffordedAction' | 'SelectedCollection';
   role: string; property_name: string | null; label: string | null; selected: number; implementation: number; usage: number | null;
@@ -35,7 +36,7 @@ export interface CompositionBindingWire {
 }
 export interface ResolvedCompositionWire {
   references: HolonReferenceWire[];
-  data: { subject_properties: { subject: number; descriptor: number; name: string; label: string; is_array: boolean }[]; bindings: CompositionBindingWire[]; metadata: { reference: number; key: string | null; identity: string; versioned_key: string | null; properties: Record<string, BaseValue> }[]; populations: { source: number; relationship: string; members: number[] }[]; theme: number | null; work: { selections: number; binding_reuses: number; metadata_reuses: number; personal_population_requests: number; candidate_population_requests: number }; reusable_across_rounds: boolean };
+  data: { contextual_holders?: number[]; subject_properties: { subject: number; descriptor: number; name: string; label: string; is_array: boolean }[]; bindings: CompositionBindingWire[]; metadata: { reference: number; key: string | null; identity: string; versioned_key: string | null; properties: Record<string, BaseValue> }[]; populations: { source: number; relationship: string; members: number[] }[]; theme: number | null; work: { selections: number; binding_reuses: number; metadata_reuses: number; personal_population_requests: number; candidate_population_requests: number }; reusable_across_rounds: boolean };
 }
 export function isResolvedCompositionWire(value: unknown): value is ResolvedCompositionWire {
   if (!isRecord(value) || !Array.isArray(value['references']) || !value['references'].every(isHolonReferenceWire) || !isRecord(value['data'])) return false;
@@ -43,8 +44,8 @@ export function isResolvedCompositionWire(value: unknown): value is ResolvedComp
   const index = (n: unknown) => typeof n === 'number' && Number.isInteger(n) && n >= 0 && n < count;
   const work = data['work'];
   const nonnegative = (n: unknown) => typeof n === 'number' && Number.isInteger(n) && n >= 0;
-  return typeof data['reusable_across_rounds'] === 'boolean' && index(data['theme']) && isRecord(work) && ['selections','binding_reuses','metadata_reuses','personal_population_requests','candidate_population_requests'].every(k => nonnegative(work[k])) && Array.isArray(data['populations']) && data['populations'].every(p => isRecord(p) && index(p['source']) && typeof p['relationship'] === 'string' && Array.isArray(p['members']) && p['members'].every(index)) && Array.isArray(data['subject_properties']) && data['subject_properties'].every(p => isRecord(p) && index(p['subject']) && index(p['descriptor']) && typeof p['name'] === 'string' && typeof p['label'] === 'string' && typeof p['is_array'] === 'boolean') && Array.isArray(data['bindings']) && data['bindings'].every((b, i) => isRecord(b)
-    && [b['owner'],b['slot'],b['subject'],b['subject_descriptor'],b['selected'],b['implementation']].every(index) && (b['usage'] === null || index(b['usage']))
+  return (data['contextual_holders'] === undefined || (Array.isArray(data['contextual_holders']) && data['contextual_holders'].every(index))) && typeof data['reusable_across_rounds'] === 'boolean' && index(data['theme']) && isRecord(work) && ['selections','binding_reuses','metadata_reuses','personal_population_requests','candidate_population_requests'].every(k => nonnegative(work[k])) && Array.isArray(data['populations']) && data['populations'].every(p => isRecord(p) && index(p['source']) && typeof p['relationship'] === 'string' && Array.isArray(p['members']) && p['members'].every(index)) && Array.isArray(data['subject_properties']) && data['subject_properties'].every(p => isRecord(p) && index(p['subject']) && index(p['descriptor']) && typeof p['name'] === 'string' && typeof p['label'] === 'string' && typeof p['is_array'] === 'boolean') && Array.isArray(data['bindings']) && data['bindings'].every((b, i) => isRecord(b)
+    && [b['owner'],b['slot'],b['subject'],b['subject_descriptor'],b['selected'],b['implementation']].every(index) && (b['usage'] === null || index(b['usage'])) && (b['value_holder'] === undefined || b['value_holder'] === null || index(b['value_holder']))
     && (b['governing_record'] === null || index(b['governing_record']))
     && (b['parent'] === null || typeof b['parent'] === 'number' && Number.isInteger(b['parent']) && b['parent'] >= 0 && b['parent'] < i)
     && typeof b['role'] === 'string' && (b['property_name'] === null || typeof b['property_name'] === 'string') && (b['label'] === null || typeof b['label'] === 'string')

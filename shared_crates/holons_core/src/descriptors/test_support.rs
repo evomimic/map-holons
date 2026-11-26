@@ -592,6 +592,19 @@ pub(crate) fn construct_prepared_fixture(
     context: &Arc<TransactionContext>,
     target: HolonReference,
 ) -> Result<EffectiveHolonDescriptor, HolonError> {
+    construct_prepared_fixture_with_policy(context, target, |_| {
+        Ok(crate::RelationshipCachePolicy::Fresh)
+    })
+}
+
+/// Projects fixture metadata using the same policy authority as its membership provider.
+pub(crate) fn construct_prepared_fixture_with_policy(
+    context: &Arc<TransactionContext>,
+    target: HolonReference,
+    policy: impl Fn(
+        &crate::descriptors::RelationshipDescriptor,
+    ) -> Result<crate::RelationshipCachePolicy, HolonError>,
+) -> Result<EffectiveHolonDescriptor, HolonError> {
     let schema = ComputedEffectiveSchema::resolve(&target)?;
     let mut result = context.mutation().new_holon(None)?;
     result.add_related_holons(CoreRelationshipTypeName::DescribedHolonType, vec![target])?;
@@ -626,22 +639,30 @@ pub(crate) fn construct_prepared_fixture(
     }
     // Small unit fixtures predate the full SourceOf/SourceType index. Project
     // their declared and inverse contracts at the mocked service boundary.
-    let navigation = match crate::descriptors::HolonDescriptor::from_holon(schema.target.clone())
-        .effective_relationships()
-    {
-        Ok(navigation) => navigation,
-        Err(HolonError::UnsupportedStagedTraversal { .. }) => schema
-            .instance_relationships()
-            .into_iter()
-            .map(|member| crate::descriptors::QualifiedRelationship {
+    let mut navigation = schema
+        .instance_relationships()
+        .into_iter()
+        .map(|member| crate::descriptors::QualifiedRelationship {
+            descriptor: crate::descriptors::RelationshipDescriptor::from_holon(
+                member.holon().clone(),
+            ),
+            descriptor_direction: crate::descriptors::RelationshipDirection::Declared,
+        })
+        .collect::<Vec<_>>();
+    match super::effective_relationships::effective_inverse_relationships(
+        &super::HolonDescriptor::from_holon(schema.target.clone()),
+    ) {
+        Ok(inverses) => navigation.extend(inverses.into_iter().map(|member| {
+            crate::descriptors::QualifiedRelationship {
                 descriptor: crate::descriptors::RelationshipDescriptor::from_holon(
                     member.holon().clone(),
                 ),
-                descriptor_direction: crate::descriptors::RelationshipDirection::Declared,
-            })
-            .collect(),
+                descriptor_direction: crate::descriptors::RelationshipDirection::Inverse,
+            }
+        })),
+        Err(HolonError::UnsupportedStagedTraversal { .. }) => {}
         Err(error) => return Err(error),
-    };
+    }
     result.add_related_holons(
         CoreRelationshipTypeName::PluralNavigableRelationships,
         navigation.iter().map(|entry| entry.descriptor.holon().clone()).collect(),
@@ -652,13 +673,19 @@ pub(crate) fn construct_prepared_fixture(
             Ok(PreparedRelationship {
                 identity: entry.descriptor.holon().full_reference_id_string(),
                 name: entry.descriptor.base_relationship_name()?,
-                policy: crate::RelationshipCachePolicy::Fresh,
+                policy: policy(&entry.descriptor)?,
                 updateable: entry.descriptor_direction
                     == crate::descriptors::RelationshipDirection::Declared,
             })
         })
         .collect::<Result<_, HolonError>>()?;
-    let prepared = PreparedSchema { relationships, ..Default::default() };
+    let prepared = PreparedSchema {
+        relationships,
+        instance_deletion_allowed: Some(
+            super::prepared_schema::prepare_instance_deletion_permission(&schema.lineage)?,
+        ),
+        ..Default::default()
+    };
     result.with_property_value(
         CorePropertyTypeName::PreparedSchema,
         base_types::MapString(serde_json::to_string(&prepared).unwrap()),

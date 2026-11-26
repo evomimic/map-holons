@@ -105,11 +105,11 @@ fn descriptor_wrappers_compose_over_minimal_schema_shaped_graph() -> Result<(), 
     let title_property =
         book_descriptor.get_property_by_name(PropertyName(MapString("Title".to_string())))?;
     let declared_relationship = book_descriptor
-        .get_relationship_by_name(RelationshipName(MapString("AuthoredBy".to_string())))?
-        .try_into_declared_relationship_descriptor()?;
+        .effective_descriptor()?
+        .get_declared_relationship_by_name(RelationshipName(MapString("AuthoredBy".to_string())))?;
     let inverse_relationship = declared_relationship.required_inverse()?;
 
-    assert_eq!(book_descriptor.instance_properties()?.len(), 1);
+    assert_eq!(book_descriptor.instance_properties_for_assembly()?.len(), 1);
     assert_eq!(book_descriptor.properties()?.len(), 1);
     assert_eq!(title_property.property_name()?.to_string(), "Title");
     assert_eq!(
@@ -505,7 +505,7 @@ fn dance_descriptor_afforded_dances_return_flattened_dance_set() -> Result<(), H
     let dance_descriptor = HolonDescriptor::from_holon(dance_type.into());
 
     assert_eq!(
-        dance_names(dance_descriptor.afforded_dances()?)?,
+        dance_names(dance_descriptor.afforded_dances_for_assembly()?)?,
         vec![
             type_names::DanceName(MapString("Query".to_string())),
             type_names::DanceName(MapString("Dance".to_string())),
@@ -526,7 +526,7 @@ fn dance_descriptor_get_dance_by_name_resolves_type_name() -> Result<(), HolonEr
     let dance_descriptor = HolonDescriptor::from_holon(dance_type.into());
 
     assert_eq!(
-        dance_descriptor.get_dance_by_name("commit")?.dance_name()?,
+        dance_descriptor.get_dance_by_name_for_assembly("commit")?.dance_name()?,
         type_names::DanceName(MapString("Commit".to_string()))
     );
 
@@ -549,7 +549,7 @@ fn dance_descriptor_get_dance_by_name_errors_when_duplicate_inherited_declaratio
     let dance_descriptor = HolonDescriptor::from_holon(leaf.into());
 
     assert!(matches!(
-        dance_descriptor.get_dance_by_name("Query"),
+        dance_descriptor.get_dance_by_name_for_assembly("Query"),
         Err(HolonError::DuplicateInheritedDeclaration { kind, name, .. })
             if kind == "dance" && name == "Query"
     ));

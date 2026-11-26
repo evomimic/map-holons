@@ -22,7 +22,8 @@ pub(crate) struct PreparedVisualizerBinding {
 }
 
 pub(crate) fn same_request(a: &VisualizerSelectionRequest, b: &VisualizerSelectionRequest) -> bool {
-    a.subject == b.subject
+    a.value_holder == b.value_holder
+        && a.subject == b.subject
         && a.requested_kind == b.requested_kind
         && a.slot == b.slot
         && a.theme == b.theme
@@ -37,9 +38,10 @@ fn saved_request(request: &VisualizerSelectionRequest) -> bool {
     let owner = match &request.owner {
         VisualizerOwner::Visualizer(owner) | VisualizerOwner::Dancer(owner) => owner,
     };
-    [&request.subject, &request.slot, &request.theme, owner]
-        .iter()
-        .all(|value| matches!(value, HolonReference::Smart(_)))
+    request.value_holder.as_ref().is_none_or(|h| matches!(h, HolonReference::Smart(_)))
+        && [&request.subject, &request.slot, &request.theme, owner]
+            .iter()
+            .all(|value| matches!(value, HolonReference::Smart(_)))
 }
 
 #[derive(Default)]

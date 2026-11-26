@@ -33,6 +33,93 @@ pub async fn owner_directed_bindings_and_personal_preference_roundtrip(runtime: 
     let saved = |key: &str| -> HolonReference {
         context.lookup().get_saved_holon_by_key(&key.into()).unwrap().into()
     };
+    // The same field descriptor has different contextual types in these holders.
+    // Resolve both in one Session, then revisit the first to exercise retained recipes.
+    for (key, expected_type, expected_visualizer) in [
+        (
+            "InstanceDeletionAllowed.PropertyType",
+            "MapBooleanValueType.BooleanValueType",
+            "BooleanValue.ValueVisualizer",
+        ),
+        (
+            "HolonSpaceName.PropertyType",
+            "MapStringValueType.StringValueType",
+            "StringValue.ValueVisualizer",
+        ),
+        (
+            "InstanceDeletionAllowed.PropertyType",
+            "MapBooleanValueType.BooleanValueType",
+            "BooleanValue.ValueVisualizer",
+        ),
+    ] {
+        let holder = saved(key);
+        let result = runtime
+            .execute_command(
+                MapCommand::Transaction(TransactionCommand {
+                    context: context.clone(),
+                    action: TransactionAction::ResolveComposition {
+                        request: holons_core::dahn::composition::CompositionRequest {
+                            value_holder: None,
+                            owner: saved("HolonInspector.NodeVisualizer"),
+                            subject: holder.clone(),
+                            theme: saved("Demo1.ForestSanctuaryTheme"),
+                            demand_slot: None,
+                            collection_source: None,
+                        },
+                    },
+                }),
+                ExecutionPolicy::default(),
+            )
+            .await
+            .unwrap();
+        let MapResult::ResolvedComposition(result) = result else { panic!("expected composition") };
+        let value = result
+            .data
+            .bindings
+            .iter()
+            .find(|b| b.property_name.as_deref() == Some("DefaultValue") && b.role == "value")
+            .expect("default value presentation");
+        assert_eq!(
+            result.references[value.subject_descriptor].key().unwrap().unwrap().0,
+            expected_type
+        );
+        assert_eq!(
+            result.references[value.selected].key().unwrap().unwrap().0,
+            expected_visualizer
+        );
+        assert_eq!(result.references[value.value_holder.expect("preserved holder")], holder);
+        assert!(
+            result.data.contextual_holders.iter().any(|index| result.references[*index] == holder),
+            "core typing dependencies must govern reuse"
+        );
+    }
+    // A direct Value demand must also carry its holder through the guest request schema.
+    let MapResult::ResolvedComposition(direct) = runtime
+        .execute_command(
+            MapCommand::Transaction(TransactionCommand {
+                context: context.clone(),
+                action: TransactionAction::ResolveComposition {
+                    request: holons_core::dahn::composition::CompositionRequest {
+                        value_holder: Some(saved("InstanceDeletionAllowed.PropertyType")),
+                        owner: saved("GenericProperty.PropertyVisualizer"),
+                        subject: saved("DefaultValue.PropertyType"),
+                        theme: saved("Demo1.ForestSanctuaryTheme"),
+                        demand_slot: Some(saved("GenericProperty.ValueSlot")),
+                        collection_source: None,
+                    },
+                },
+            }),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .unwrap()
+    else {
+        panic!("expected direct Value composition")
+    };
+    assert_eq!(
+        direct.references[direct.data.bindings[0].subject_descriptor].key().unwrap().unwrap().0,
+        "MapBooleanValueType.BooleanValueType"
+    );
     let composition_started = std::time::Instant::now();
     let owner = saved("HolonInspector.NodeVisualizer");
     let subject = context.get_space_holon().unwrap().unwrap();
@@ -41,6 +128,7 @@ pub async fn owner_directed_bindings_and_personal_preference_roundtrip(runtime: 
         context: context.clone(),
         action: TransactionAction::ResolveComposition {
             request: holons_core::dahn::composition::CompositionRequest {
+                value_holder: None,
                 owner,
                 subject,
                 theme,
@@ -139,6 +227,7 @@ pub async fn owner_directed_bindings_and_personal_preference_roundtrip(runtime: 
         .available_relationships(&subject)
         .unwrap();
     let request = holons_core::dahn::composition::CompositionRequest {
+        value_holder: None,
         owner: saved("HolonInspector.NodeVisualizer"),
         subject,
         theme: saved("Demo1.DeepOceanTheme"),
@@ -197,6 +286,7 @@ async fn date_preferences(runtime: &Runtime) {
         reconsider: bool,
     ) -> holons_core::dahn::composition::ResolvedComposition {
         let request = holons_core::dahn::composition::CompositionRequest {
+            value_holder: None,
             owner: saved(context, &format!("PreferenceTest{suffix}.PropertyMapVisualizer")),
             subject: record,
             theme: saved(context, "Demo1.DeepOceanTheme"),
@@ -267,6 +357,7 @@ async fn date_preferences(runtime: &Runtime) {
                 context: ctx.clone(),
                 action: TransactionAction::ResolveComposition {
                     request: holons_core::dahn::composition::CompositionRequest {
+                        value_holder: None,
                         owner: saved(&ctx, "PreferenceTestInitialInspector.NodeVisualizer"),
                         subject: ctx.get_space_holon().unwrap().unwrap(),
                         theme: saved(&ctx, "Demo1.DeepOceanTheme"),
@@ -643,6 +734,7 @@ pub async fn measure_owner_composition_boundary(
         context.lookup().get_saved_holon_by_key(&key.into()).unwrap().into()
     };
     let request = holons_core::dahn::composition::CompositionRequest {
+        value_holder: None,
         owner: saved("HolonInspector.NodeVisualizer"),
         subject: context.get_space_holon().unwrap().unwrap(),
         theme: saved("Demo1.DeepOceanTheme"),
@@ -713,6 +805,7 @@ pub async fn retained_visualizer_successor_preserves_established_version(runtime
         let mut subject = context.mutation().new_holon(None).unwrap();
         subject.with_descriptor(saved(context, "PreferenceTestRecord.HolonType")).unwrap();
         let request = CompositionRequest {
+            value_holder: None,
             owner: saved(context, &format!("PreferenceTest{suffix}.PropertyMapVisualizer")),
             subject: subject.into(),
             theme: saved(context, "Demo1.DeepOceanTheme"),

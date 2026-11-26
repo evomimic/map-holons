@@ -9,7 +9,6 @@ use type_names::CorePropertyTypeName;
 
 use crate::core_shared_objects::holon::access_policy::check_saved_holon_access;
 use crate::core_shared_objects::space_read_handle::SpaceReadHandle;
-use crate::descriptors::effective_relationships::effective_declared_relationships_for_holon;
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
@@ -423,11 +422,12 @@ impl ToHolonCloneModel for SmartReference {
         // Saved sources must be described; their read surface includes inverses. The source's
         // `DescribedBy` relationship is itself copied only if its descriptor
         // declares it among the effective instance relationships.
-        let declared_relationship_names =
-            effective_declared_relationships_for_holon(&HolonReference::from(self))?
-                .into_iter()
-                .map(|relationship| relationship.base_relationship_name())
-                .collect::<Result<Vec<_>, HolonError>>()?;
+        let declared_relationship_names = self
+            .effective_descriptor()?
+            .declared_relationships()?
+            .into_iter()
+            .map(|relationship| relationship.base_relationship_name())
+            .collect::<Result<Vec<_>, HolonError>>()?;
 
         let mut cloned_relationships = RelationshipMap::new_empty();
         for (relationship_name, collection) in self.all_related_holons()?.iter() {

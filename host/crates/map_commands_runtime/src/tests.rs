@@ -196,6 +196,7 @@ async fn select_visualizer_command_delegates_to_dahn_selection() {
     let direct = dahn_selection::select_visualizer(
         &context,
         VisualizerSelectionRequest {
+            value_holder: None,
             subject: subject.clone(),
             requested_kind: VisualizerKind::Node,
             owner: map_commands_contract::VisualizerOwner::Visualizer(subject.clone()),
@@ -209,6 +210,7 @@ async fn select_visualizer_command_delegates_to_dahn_selection() {
                 context,
                 action: TransactionAction::SelectVisualizer {
                     request: VisualizerSelectionRequest {
+                        value_holder: None,
                         slot: subject.clone(),
                         owner: map_commands_contract::VisualizerOwner::Visualizer(subject.clone()),
                         theme: subject.clone(),
@@ -246,6 +248,7 @@ async fn usage_commands_validate_retained_subject_after_commit() {
         .await
         .expect("commit with retained response evidence");
     let request = || VisualizerSelectionRequest {
+        value_holder: None,
         subject: subject.clone(),
         requested_kind: VisualizerKind::Node,
         owner: map_commands_contract::VisualizerOwner::Visualizer(subject.clone()),

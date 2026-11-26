@@ -180,9 +180,34 @@ mod tests {
         let mut ehd = owner.mutation().new_holon(None)?;
         ehd.add_related_holons("DescribedBy", vec![target.clone()])?;
         ehd.with_property_value("DerivedInstanceTypeKind", "{\"Ok\":null}")?;
+        let declaration: HolonReference = holons_core::SmartReference::new_with_properties(
+            owner.space_read_handle(),
+            HolonId::Local(LocalId(vec![99; 39])),
+            core_types::PropertyMap::from([(
+                core_types::PropertyName("Key".into()),
+                base_types::BaseValue::StringValue("Example".into()),
+            )]),
+        )
+        .into();
+        ehd.add_related_holons("EffectiveInstanceRelationships", vec![declaration.clone()])?;
         let prepared = holons_core::descriptors::PreparedSchema {
+            instance_deletion_allowed: Some(Ok(false)),
+            relationships: vec![holons_core::descriptors::PreparedRelationship {
+                identity: declaration.full_reference_id_string(),
+                name: RelationshipName("Example".into()),
+                policy: holons_core::RelationshipCachePolicy::Reuse,
+                updateable: true,
+            }],
             lineage: vec![target_id.clone()],
-            origins: vec![vec![]; 7],
+            origins: vec![
+                vec![],
+                vec![(target_id.clone(), 0)],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+            ],
             ..Default::default()
         };
         ehd.with_property_value("PreparedSchema", serde_json::to_string(&prepared).unwrap())?;
@@ -231,6 +256,12 @@ mod tests {
         let saved = HolonReference::smart_from_id(agent.space_read_handle(), id.clone());
         for _ in 0..3 {
             let ehd = EffectiveHolonDescriptor::acquire(saved.clone())?;
+            assert!(!ehd.instance_deletion_allowed()?);
+            assert_eq!(ehd.declared_relationships()?.len(), 1);
+            assert_eq!(
+                ehd.get_declared_relationship_by_name("Example")?.holon().holon_id()?,
+                HolonId::Local(LocalId(vec![99; 39]))
+            );
             assert_eq!(ehd.described_holon_type()?.holon().holon_id()?, id);
             assert_eq!(
                 ehd.holon().full_reference_id_string(),
@@ -519,6 +550,7 @@ mod tests {
         subject.add_related_holons("DescribedBy", vec![saved(2)])?;
         let subject: HolonReference = subject.into();
         let request = CompositionRequest {
+            value_holder: None,
             owner: saved(1),
             subject: subject.clone(),
             theme: saved(3),
@@ -528,6 +560,7 @@ mod tests {
         let references = vec![subject, saved(1), saved(2), saved(3), saved(4), saved(5), saved(6)];
         let data = CompositionData {
             bindings: vec![ChildBinding {
+                value_holder: None,
                 parent: None,
                 owner: 1,
                 slot: 6,

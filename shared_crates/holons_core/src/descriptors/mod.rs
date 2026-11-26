@@ -6,9 +6,14 @@ mod commit_effects;
 pub use commit_effects::DescriptorCommitEffects;
 mod constraint_applicability;
 mod constraint_contributions;
+mod contextual_value_type;
 mod contract_contributions;
 mod core_descriptor_lookup;
 mod core_roles;
+pub use contextual_value_type::{
+    resolve_contextual_value_type, resolve_default_value_type, ContextualValueType,
+    ContextualValueTypeFacts,
+};
 pub mod dance_descriptor;
 pub mod dance_response_descriptor;
 pub mod declared_relationship_descriptor;

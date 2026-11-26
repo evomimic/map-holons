@@ -23,10 +23,18 @@ impl HolonSpaceDescriptor {
     pub fn transaction_model(&self) -> Result<TransactionDescriptor, HolonError> {
         // Command-scope binding precedes construction on bootstrap requests.
         let relationship = match super::EffectiveHolonDescriptor::find_prepared(&self.holon)? {
-            Some(prepared) => prepared
-                .get_relationship_by_name(CoreRelationshipTypeName::AffordsTransactionModel)?,
+            Some(prepared) => crate::descriptors::RelationshipDescriptor::from_holon(
+                prepared
+                    .get_declared_relationship_by_name(
+                        CoreRelationshipTypeName::AffordsTransactionModel,
+                    )?
+                    .holon()
+                    .clone(),
+            ),
             None => HolonDescriptor::from_holon(self.holon.clone())
-                .get_relationship_by_name(CoreRelationshipTypeName::AffordsTransactionModel)?,
+                .get_relationship_by_name_for_assembly(
+                    CoreRelationshipTypeName::AffordsTransactionModel,
+                )?,
         }
         .try_into_declared_relationship_descriptor()?;
         let transaction_model = relationship.target_type()?;

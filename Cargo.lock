@@ -3451,6 +3451,7 @@ dependencies = [
  "hdk",
  "holons_core",
  "holons_prelude",
+ "serde_json",
  "tracing",
 ]
 
@@ -3536,6 +3537,7 @@ dependencies = [
  "base_types",
  "core_types",
  "holons_core",
+ "serde_json",
  "type_names",
 ]
 

@@ -1,10 +1,10 @@
 schema "MAP Space Navigator Schema-v0.1.4" {
-  depends_on "MAP Core Schema-v0.0.11"
+  depends_on "MAP Core Schema-v0.0.12"
   depends_on "MAP Dance Schema-v0.1.4"
   depends_on "MAP Design Tokens Schema-v0.1.4"
   depends_on "MAP Meta Design System Schema-v0.1.4"
   depends_on "MAP Theme Schema-v0.1.4"
-  depends_on "MAP DAHN Schema-v0.1.4"
+  depends_on "MAP DAHN Schema-v0.1.5"
   depends_on "MAP Dancer Schema-v0.1.4"
   header {
     description: "House Troupe semantic package for the Space Navigator's statically bundled Visualizer Holons and their locally resolvable implementation identities. These mappings resolve semantic VisualizerImplementation Holons; they do not create TypeScript-only Visualizer identities. The persisted TableCollectionVisualizer key identifies the current table-oriented Collection presentation strategy; shape-based collection applicability is deferred."
@@ -29,7 +29,7 @@ instance SpaceNavigator.Dancer {
     AffordedByHolonSpace -> MAP.CoreSchemaSpace
     HasExperienceVisualizerSlot -> [SpaceNavigator.RootedNavigationSlot, SpaceNavigator.VisualizerInformationSlot]
     Requires -> [
-      "MAP DAHN Schema-v0.1.4",
+      "MAP DAHN Schema-v0.1.5",
       "MAP Space Navigator Schema-v0.1.4"
     ]
   }

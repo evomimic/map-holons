@@ -49,6 +49,8 @@ use type_names::{
 pub struct CompositionRequest {
     pub owner: HolonReference,
     pub subject: HolonReference,
+    /// Preserves the field's holder when the subject is a property descriptor.
+    pub value_holder: Option<HolonReference>,
     pub theme: HolonReference,
     pub demand_slot: Option<HolonReference>,
     pub collection_source: Option<HolonReference>,
@@ -74,6 +76,8 @@ pub struct ChildBinding {
     pub slot: usize,
     pub subject: usize,
     pub subject_descriptor: usize,
+    #[serde(default)]
+    pub value_holder: Option<usize>,
     pub subject_binding: CompositionSubject,
     pub role: String,
     pub property_name: Option<String>,
@@ -152,6 +156,9 @@ pub struct CompositionWork {
 pub struct CompositionData {
     #[serde(default)]
     pub subject_properties: Vec<CompositionProperty>,
+    /// Holder identities whose metadata governs contextual typing, reported by core.
+    #[serde(default)]
+    pub contextual_holders: Vec<usize>,
     pub bindings: Vec<ChildBinding>,
     pub populations: Vec<CompositionPopulation>,
     pub theme: Option<usize>,
@@ -247,7 +254,14 @@ impl Resolver<'_> {
             let name = property.property_name()?.to_string();
             let label =
                 property.header().display_name()?.map(|v| v.0).unwrap_or_else(|| name.clone());
-            let is_array = property.value_type()?.is_array()?;
+            let contract = property.contextual_value_type(subject)?;
+            if contract.holder_dependent {
+                let holder = self.identity(subject);
+                if !self.result.data.contextual_holders.contains(&holder) {
+                    self.result.data.contextual_holders.push(holder);
+                }
+            }
+            let is_array = contract.value_descriptor().is_array()?;
             let entry = CompositionProperty {
                 subject: self.identity(subject),
                 descriptor: self.reference(property.holon())?,
@@ -281,6 +295,7 @@ impl Resolver<'_> {
         demand: Option<&HolonReference>,
         collection: Option<&HolonReference>,
         ancestors: &[HolonReference],
+        value_holder: Option<&HolonReference>,
     ) -> Result<(), HolonError> {
         if ancestors.contains(owner) {
             return Err(HolonError::InvalidState("Cyclic Presentation composition".into()));
@@ -307,9 +322,13 @@ impl Resolver<'_> {
             let kind = kind(&slot)?;
             let mut subjects = Vec::new();
             match binding {
-                CompositionSubject::OwnerSubject => {
-                    subjects.push((subject.clone(), subject.clone(), None, None))
-                }
+                CompositionSubject::OwnerSubject => subjects.push((
+                    subject.clone(),
+                    subject.clone(),
+                    None,
+                    None,
+                    value_holder.cloned(),
+                )),
                 CompositionSubject::ScalarPropertyLabel
                 | CompositionSubject::ScalarPropertyValue => {
                     for (property, name, label, is_array) in self
@@ -334,14 +353,30 @@ impl Resolver<'_> {
                             } else {
                                 property.clone()
                             };
-                        subjects.push((property, selection_subject, Some(name), Some(label)));
+                        subjects.push((
+                            property,
+                            selection_subject,
+                            Some(name),
+                            Some(label),
+                            if binding == CompositionSubject::ScalarPropertyValue {
+                                Some(subject.clone())
+                            } else {
+                                None
+                            },
+                        ));
                     }
                 }
                 CompositionSubject::AffordedAction => {
                     for dance in
                         subject.holon_descriptor()?.effective_descriptor()?.afforded_dances()?
                     {
-                        subjects.push((dance.holon().clone(), dance.holon().clone(), None, None));
+                        subjects.push((
+                            dance.holon().clone(),
+                            dance.holon().clone(),
+                            None,
+                            None,
+                            None,
+                        ));
                     }
                 }
                 CompositionSubject::SelectedCollection => {
@@ -371,11 +406,12 @@ impl Resolver<'_> {
                     )?;
                     let mut witness = self.context.mutation().new_holon(None)?;
                     witness.add_related_holons(C::DescribedBy, vec![collection_type.into()])?;
-                    subjects.push((source, witness.into(), None, None));
+                    subjects.push((source, witness.into(), None, None, None));
                 }
             }
-            for (bound_subject, selection_subject, property_name, label) in subjects {
+            for (bound_subject, selection_subject, property_name, label, holder) in subjects {
                 let request = VisualizerSelectionRequest {
+                    value_holder: holder.clone(),
                     subject: selection_subject,
                     owner: VisualizerOwner::Visualizer(owner.clone()),
                     slot: slot.clone(),
@@ -422,6 +458,7 @@ impl Resolver<'_> {
                         self.reference(&bound_subject)?
                     },
                     subject_descriptor: self.reference(&descriptor)?,
+                    value_holder: holder.as_ref().map(|h| self.identity(h)),
                     subject_binding: binding,
                     role: role.clone(),
                     property_name,
@@ -448,6 +485,7 @@ impl Resolver<'_> {
                     None,
                     None,
                     &ancestors,
+                    holder.as_ref(),
                 )
                 .map_err(|e| phase(&format!("expanding {role}"), e))?;
             }
@@ -490,6 +528,7 @@ pub fn resolve(
             request.demand_slot.as_ref(),
             request.collection_source.as_ref(),
             &[],
+            request.value_holder.as_ref(),
         )
         .map_err(|error| {
             HolonError::InvalidState(format!("Resolving owner-directed composition: {error}"))
@@ -657,7 +696,8 @@ impl ResolvedComposition {
         let length = self.references.len();
         let metadata =
             data.metadata.iter().map(|m| m.reference).collect::<std::collections::HashSet<_>>();
-        if metadata.len() != data.metadata.len()
+        if data.contextual_holders.iter().any(|index| *index >= length)
+            || metadata.len() != data.metadata.len()
             || metadata.iter().any(|index| *index >= length)
             || data
                 .subject_properties
@@ -676,6 +716,7 @@ impl ResolvedComposition {
                     .iter()
                     .any(|v| *v >= length)
                     || b.usage.is_some_and(|v| v >= length)
+                    || b.value_holder.is_some_and(|v| v >= length)
                     || [b.owner, b.slot, b.subject_descriptor, b.selected, b.implementation]
                         .iter()
                         .any(|index| !metadata.contains(index))

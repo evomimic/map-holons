@@ -2,8 +2,8 @@ meta {
   export_mode: "test-fixture"
 }
 schema VisualizerPreferenceTestSchema {
-  depends_on "MAP Core Schema-v0.0.11"
-  depends_on "MAP DAHN Schema-v0.1.4"
+  depends_on "MAP Core Schema-v0.0.12"
+  depends_on "MAP DAHN Schema-v0.1.5"
   header {
     description: "Test-only declared Date preferences across compatible compositions."
   }

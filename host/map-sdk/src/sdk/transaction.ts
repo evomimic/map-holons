@@ -60,6 +60,7 @@ export type VisualizerKind =
  * Rust retains descriptor and ValueType authority.
  */
 export interface VisualizerSelectionRequest {
+  valueHolder?: HolonReference;
   slot: HolonReference;
   subject: HolonReference;
   requestedKind: VisualizerKind;
@@ -156,10 +157,11 @@ export class MapTransaction {
    */
   async resolveComposition(owner: HolonReference, subject: HolonReference, theme: HolonReference,
     demandSlot?: HolonReference, collectionSource?: HolonReference,
-    options: { reconsider?: boolean } = {}): Promise<import('./composition').ResolvedComposition> {
+    options: { reconsider?: boolean; valueHolder?: HolonReference } = {}): Promise<import('./composition').ResolvedComposition> {
     const resolved = await internalTransaction.resolveComposition(txIdFor(this), {
       owner: unwrapHolonReference(owner), subject: unwrapHolonReference(subject), theme: unwrapHolonReference(theme),
       reconsider: options.reconsider ?? false,
+      ...(options.valueHolder ? { value_holder: unwrapHolonReference(options.valueHolder) } : {}),
       demand_slot: demandSlot ? unwrapHolonReference(demandSlot) : null,
       collection_source: collectionSource ? unwrapHolonReference(collectionSource) : null,
     });
@@ -189,6 +191,7 @@ export class MapTransaction {
       bindings: resolved.data.bindings.map(b => ({
         parent: b.parent, owner: references[b.owner], slot: references[b.slot],
         subject: references[b.subject], subjectDescriptor: references[b.subject_descriptor],
+        valueHolder: b.value_holder == null ? undefined : references[b.value_holder],
         subjectBinding: b.subject_binding, role: b.role,
         propertyName: b.property_name ?? undefined, label: b.label ?? undefined,
         selected: references[b.selected], implementation: references[b.implementation],
@@ -202,8 +205,8 @@ export class MapTransaction {
 
   /** Resolve one declared Value demand without exposing the descriptor's transport handle. */
   resolvePropertyComposition(property: PropertyDescriptorHandle, owner: HolonReference,
-    slot: HolonReference, theme: HolonReference): Promise<import('./composition').ResolvedComposition> {
-    return this.resolveComposition(owner, unwrapPropertyDescriptorHandle(property), theme, slot);
+    slot: HolonReference, theme: HolonReference, valueHolder?: HolonReference): Promise<import('./composition').ResolvedComposition> {
+    return this.resolveComposition(owner, unwrapPropertyDescriptorHandle(property), theme, slot, undefined, { valueHolder });
   }
 
   /** Activate a selected owner's collection Slot for one available relationship source. */
@@ -674,6 +677,7 @@ export class MapTransaction {
   private selectionRequestWire(request: VisualizerSelectionRequest): VisualizerSelectionRequestWire {
     const bind = (reference: HolonReference) => unwrapHolonReference(this.owns(reference) ? reference : this.bindSavedReference(reference));
     return {
+      ...(request.valueHolder ? { value_holder: bind(request.valueHolder) } : {}),
       subject: bind(request.subject), slot: bind(request.slot), theme: bind(request.theme),
       requested_kind: toVisualizerKindWire(request.requestedKind),
       owner: 'visualizer' in request.owner ? { Visualizer: bind(request.owner.visualizer) } : { Dancer: bind(request.owner.dancer) },

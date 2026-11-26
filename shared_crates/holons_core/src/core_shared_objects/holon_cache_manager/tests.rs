@@ -19,6 +19,8 @@ struct CountingService {
     exercise_context_lifetime: std::sync::atomic::AtomicBool,
     fail_reads: std::sync::atomic::AtomicBool,
     preparation_calls: AtomicUsize,
+    construction_calls: AtomicUsize,
+    preparation_error: RwLock<Option<HolonError>>,
     reuse_frozen: bool,
     reuse_described_by: std::sync::atomic::AtomicBool,
     edges: RwLock<HashMap<(u8, String), Vec<u8>>>,
@@ -63,6 +65,8 @@ impl CountingService {
             exercise_context_lifetime: Default::default(),
             fail_reads: Default::default(),
             preparation_calls: Default::default(),
+            construction_calls: Default::default(),
+            preparation_error: Default::default(),
             reuse_frozen,
             reuse_described_by: Default::default(),
             edges: RwLock::new(edges),
@@ -109,6 +113,26 @@ impl CountingService {
 }
 
 impl HolonServiceApi for CountingService {
+    fn construct_effective_holon_descriptor_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<crate::descriptors::EffectiveHolonDescriptor, HolonError> {
+        self.construction_calls.fetch_add(1, Ordering::Relaxed);
+        if let Some(error) = self.preparation_error.read().unwrap().clone() {
+            return Err(error);
+        }
+        let id = target.holon_id()?;
+        crate::descriptors::test_support::construct_prepared_fixture_with_policy(
+            context,
+            target,
+            |descriptor| {
+                self.relationship_cache_policy(context, &id, &descriptor.base_relationship_name()?)?
+                    .ok_or_else(|| HolonError::InvalidState("Unresolved fixture policy".into()))
+            },
+        )
+    }
+
     fn get_saved_holon_by_key_internal(
         &self,
         context: &Arc<TransactionContext>,
@@ -422,7 +446,10 @@ fn all_relationship_reads_preserve_declared_content_outside_prepared_navigation(
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
     let source = CountingService::reference(&context, 1);
     let available =
-        crate::reference_layer::available_relationships::available_relationships(&source)?;
+        crate::reference_layer::available_relationships::available_relationships_from_effective(
+            &source,
+            &source.effective_descriptor()?,
+        )?;
     assert_eq!(available.len(), 1);
     assert_eq!(available[0].descriptor.base_relationship_name()?.to_string(), "Moving");
 
@@ -726,6 +753,33 @@ fn prepared_binding_preserves_exact_versions_and_rejects_ambiguous_names() -> Re
     space.reset_session()?;
     assert_eq!(retained.saved_content_relationship_bindings(), Err(HolonError::ObsoleteSession));
     assert_eq!(service.content_reads.load(Ordering::Relaxed), 0);
+    Ok(())
+}
+
+#[test]
+fn cold_all_relationship_reads_require_acquisition_and_retry_its_failure() -> Result<(), HolonError>
+{
+    let service = Arc::new(CountingService::new(true));
+    let space = HolonSpaceManager::new_with_managers(
+        None,
+        service.clone(),
+        None,
+        ServiceRoutingPolicy::BlockExternal,
+    );
+    let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    let source = CountingService::reference(&context, 1);
+    let error = HolonError::ConductorError("schema construction failed".into());
+    *service.preparation_error.write().unwrap() = Some(error.clone());
+    assert!(matches!(source.all_related_holons(), Err(actual) if actual == error));
+    assert_eq!(service.construction_calls.load(Ordering::Relaxed), 1);
+    assert_eq!(service.bulk_calls.load(Ordering::Relaxed), 0);
+    *service.preparation_error.write().unwrap() = None;
+    assert!(source
+        .all_related_holons()?
+        .get_collection_for_relationship(&"Frozen".to_relationship_name())
+        .is_some());
+    assert_eq!(service.construction_calls.load(Ordering::Relaxed), 2);
+    assert_eq!(service.bulk_calls.load(Ordering::Relaxed), 1);
     Ok(())
 }
 

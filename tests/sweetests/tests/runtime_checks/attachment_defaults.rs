@@ -37,7 +37,7 @@ pub async fn mixed_import_promotes_saved_descriptor_and_materializes_early_enum_
             "Description": "Saved contract for extension import"},
         "relationships": [
             {"name": "Extends", "target": [{"$ref": "HolonType.TypeDescriptor"}]},
-            {"name": "ComponentOf", "target": [{"$ref": "MAP Core Schema-v0.0.11"}]},
+            {"name": "ComponentOf", "target": [{"$ref": "MAP Core Schema-v0.0.12"}]},
             {"name": "InstanceProperties", "target": [{"$ref": "TargetBinding.PropertyType"}]}
         ]
     }]});
@@ -91,7 +91,7 @@ pub async fn mixed_import_promotes_saved_descriptor_and_materializes_early_enum_
         // another LoaderHolon for it, exercising resolve_staged_write_source.
         ("DescribedBy", "MixedDefaults.HolonType", "MetaHolonType.MetaTypeDescriptor"),
         ("Extends", "ExtraChoice.PropertyType", "PropertyType.TypeDescriptor"),
-        ("ComponentOf", "ExtraChoice.PropertyType", "MAP Core Schema-v0.0.11"),
+        ("ComponentOf", "ExtraChoice.PropertyType", "MAP Core Schema-v0.0.12"),
         ("ValueType", "ExtraChoice.PropertyType", "TargetBinding.MapEnumValueType"),
         ("InstanceProperties", "MixedDefaults.HolonType", "ExtraChoice.PropertyType"),
     ] {

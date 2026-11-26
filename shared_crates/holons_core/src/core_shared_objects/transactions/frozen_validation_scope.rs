@@ -136,6 +136,25 @@ impl TransactionContext {
         Ok(FrozenValidationScope { context: self, state })
     }
 
+    /// Reuses a completed mutable HolonType product without starting construction.
+    /// Structural assembly helpers use this only while the assessment owns frozen inputs.
+    pub(crate) fn find_frozen_effective(
+        &self,
+        target: &HolonReference,
+    ) -> Result<Option<EffectiveHolonDescriptor>, HolonError> {
+        let Some(id) = self.frozen_descriptor_id(target)? else { return Ok(None) };
+        let state = self.frozen_validation.lock().map_err(lock_error)?.clone();
+        let Some(state) = state else { return Ok(None) };
+        state.token.check_active()?;
+        let result = state
+            .entries
+            .lock()
+            .map_err(lock_error)?
+            .get(&id)
+            .and_then(|entry| entry.effective.clone());
+        Ok(result)
+    }
+
     pub(crate) fn acquire_frozen_derived(
         &self,
         target: &HolonReference,

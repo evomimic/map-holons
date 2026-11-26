@@ -6,7 +6,7 @@ meta {
   load_with: ["../core/root.json","../core/concrete-value-types.json","../core/keyrules.json","../core/property-types.json","../core/loader-types.json"]
 }
 schema "MAP Dance Schema-v0.1.4" {
-  depends_on "MAP Core Schema-v0.0.11"
+  depends_on "MAP Core Schema-v0.0.12"
   header {
     description: "Schema containing MAP's Dance descriptors, affordance contracts, and loader dance response contract."
   }

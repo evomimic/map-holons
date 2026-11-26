@@ -65,6 +65,15 @@ describe('errors', () => {
     expect(error.payload).toBe('missing-holon');
   });
 
+  it('includes the domain reason in displayed string-payload errors', () => {
+    const reason = 'Multiple applicable VisualizerUsages';
+    const error = parseDomainError({ InvalidState: reason });
+
+    expect(error.message).toBe(`MAP domain error: InvalidState: ${reason}`);
+    expect(error.variant).toBe('InvalidState');
+    expect(error.payload).toBe(reason);
+  });
+
   it('parses a structured wire domain error payload', () => {
     const error = parseDomainError({
       CrossTransactionReference: {

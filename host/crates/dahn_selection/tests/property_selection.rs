@@ -274,6 +274,7 @@ fn select(
     let result = dahn_selection::select_visualizer(
         &context,
         VisualizerSelectionRequest {
+            value_holder: None,
             subject: Graph::reference(&context, subject),
             requested_kind: kind,
             owner: VisualizerOwner::Visualizer(Graph::reference(&context, 40)),
@@ -407,6 +408,7 @@ fn slot_select_kind(
     let result = dahn_selection::select_visualizer(
         &context,
         VisualizerSelectionRequest {
+            value_holder: None,
             subject: Graph::reference(&context, 1),
             requested_kind: kind,
             slot: Graph::reference(&context, slot),
@@ -633,6 +635,7 @@ fn candidate_context(mut graph: Graph) -> Arc<TransactionContext> {
 }
 fn candidate_request(context: &Arc<TransactionContext>) -> VisualizerSelectionRequest {
     VisualizerSelectionRequest {
+        value_holder: None,
         subject: Graph::reference(context, 1),
         requested_kind: VisualizerKind::Property,
         owner: VisualizerOwner::Visualizer(Graph::reference(context, 40)),
@@ -1039,6 +1042,7 @@ fn prescribed_fixture(
     );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
     let request = VisualizerSelectionRequest {
+        value_holder: None,
         subject: Graph::reference(&context, 1),
         requested_kind: VisualizerKind::PropertyMap,
         owner: VisualizerOwner::Visualizer(Graph::reference(&context, 40)),
@@ -1147,6 +1151,7 @@ fn personal_fixture(
     );
     let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
     let request = VisualizerSelectionRequest {
+        value_holder: None,
         subject: Graph::reference(&context, 3),
         requested_kind: VisualizerKind::Value,
         owner: VisualizerOwner::Visualizer(Graph::reference(&context, 40)),

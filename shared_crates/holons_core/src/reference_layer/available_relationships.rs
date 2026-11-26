@@ -18,48 +18,17 @@
 //! descriptor itself. The inverse side is consulted only for committed sources.
 
 use crate::descriptors::{
-    effective_relationships::effective_declared_relationships_for_holon, Descriptor,
-    QualifiedRelationship, RelationshipDescriptor, RelationshipDirection,
+    Descriptor, QualifiedRelationship, RelationshipDescriptor, RelationshipDirection,
 };
 use crate::reference_layer::{readable_impl::ReadableHolonImpl, ReadableHolon};
 use core_types::HolonError;
 
-pub(crate) fn available_relationships<T>(
-    source_ref: &T,
-) -> Result<Vec<QualifiedRelationship>, HolonError>
-where
-    T: ReadableHolonImpl + ?Sized,
-{
-    let source_holon = source_ref.holon_reference_impl();
-    let descriptor = source_holon.holon_descriptor()?;
-    if let Some(prepared) =
-        crate::descriptors::EffectiveHolonDescriptor::find_prepared(descriptor.holon())?
-    {
-        return available_relationships_from_effective(source_ref, &prepared);
-    }
-    // This low-level enumeration also clones schema during bootstrap; it must
-    // remain usable before the preparation Dance itself is available.
-
-    let mut relationships = effective_declared_relationships_for_holon(&source_holon)?
-        .into_iter()
-        .map(|declared| QualifiedRelationship {
-            descriptor: RelationshipDescriptor::from_holon(declared.holon().clone()),
-            descriptor_direction: RelationshipDirection::Declared,
-        })
-        .collect::<Vec<_>>();
-
-    if source_ref.is_committed_source_impl()? {
-        relationships.extend(
-            source_ref.holon_descriptor()?.effective_inverse_relationships()?.into_iter().map(
-                |inverse| QualifiedRelationship {
-                    descriptor: RelationshipDescriptor::from_holon(inverse.holon().clone()),
-                    descriptor_direction: RelationshipDirection::Inverse,
-                },
-            ),
-        );
-    }
-
-    Ok(relationships)
+#[cfg(test)]
+fn available_relationships<T: ReadableHolonImpl + ?Sized>(
+    source: &T,
+) -> Result<Vec<QualifiedRelationship>, HolonError> {
+    let effective = source.holon_reference_impl().effective_descriptor()?;
+    available_relationships_from_effective(source, &effective)
 }
 
 /// Uses the populated declared contract and inverse vocabulary without resolving inheritance.

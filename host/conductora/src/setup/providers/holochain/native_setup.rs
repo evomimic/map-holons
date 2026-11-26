@@ -519,6 +519,7 @@ mod tests {
         let selected = holons_core::dahn::select_visualizer(
             &load_context,
             holons_core::dahn::contract::VisualizerSelectionRequest {
+                value_holder: None,
                 subject: response.clone(),
                 owner: holons_core::dahn::contract::VisualizerOwner::Visualizer(saved(
                     "PathInspector.RootedNavigationVisualizer",
@@ -535,6 +536,7 @@ mod tests {
                     context: load_context.clone(),
                     action: TransactionAction::ResolveComposition {
                         request: holons_core::dahn::composition::CompositionRequest {
+                            value_holder: None,
                             owner: selected.selected,
                             subject: response.clone(),
                             theme: saved("Demo1.DeepOceanTheme"),
@@ -560,6 +562,7 @@ mod tests {
         let selected = holons_core::dahn::select_visualizer(
             &load_context,
             holons_core::dahn::contract::VisualizerSelectionRequest {
+                value_holder: None,
                 subject: response.clone(),
                 owner: holons_core::dahn::contract::VisualizerOwner::Visualizer(saved(
                     "PathInspector.RootedNavigationVisualizer",
@@ -576,6 +579,7 @@ mod tests {
                     context: inspector.clone(),
                     action: TransactionAction::ResolveComposition {
                         request: holons_core::dahn::composition::CompositionRequest {
+            value_holder: None,
                             owner: selected.selected.clone(),
                             subject: witness.clone().into(),
                             theme: saved("Demo1.DeepOceanTheme"),

@@ -100,6 +100,22 @@ async fn guest_construction_returns_a_retained_sealed_schema_graph(runtime: Runt
     }
     assert_eq!(references[0].full_reference_id_string(), references[1].full_reference_id_string());
     let descriptor = EffectiveHolonDescriptor::try_from_holon(references[0].clone()).unwrap();
+    assert!(!descriptor.instance_deletion_allowed().unwrap(), "HolonSpace is a durable anchor");
+    assert_eq!(
+        descriptor
+            .get_declared_relationship_by_name("DescribedBy")
+            .unwrap()
+            .base_relationship_name()
+            .unwrap(),
+        CoreRelationshipTypeName::DescribedBy.to_relationship_name()
+    );
+    assert!(
+        matches!(
+            descriptor.get_declared_relationship_by_name("Owns"),
+            Err(HolonError::DescriptorDeclarationNotFound { .. })
+        ),
+        "inverse navigation must not become an authored declaration"
+    );
     let singular = descriptor.singular_navigable_relationships().unwrap();
     let MapResult::Collection(plural_collection) = runtime
         .execute_command(
@@ -308,6 +324,11 @@ async fn guest_construction_returns_a_retained_sealed_schema_graph(runtime: Runt
         target.holon().holon_id().unwrap(),
     );
     let copy = EffectiveHolonDescriptor::acquire(received_target).unwrap();
+    assert!(!copy.instance_deletion_allowed().unwrap());
+    assert_eq!(
+        copy.declared_relationships().unwrap().len(),
+        descriptor.declared_relationships().unwrap().len()
+    );
     assert_eq!(
         copy.holon().full_reference_id_string(),
         descriptor.holon().full_reference_id_string()
@@ -352,6 +373,7 @@ async fn guest_construction_returns_a_retained_sealed_schema_graph(runtime: Runt
         descriptor.holon().full_reference_id_string()
     );
     assert!(matches!(descriptor.instance_properties(), Err(HolonError::ObsoleteSession)));
+    assert!(matches!(descriptor.instance_deletion_allowed(), Err(HolonError::ObsoleteSession)));
     assert!(matches!(selected.instance_properties(), Err(HolonError::ObsoleteSession)));
     assert_eq!(wrapper.effective_descriptor().unwrap().holon(), pulled.holon());
     assert_eq!(
@@ -619,7 +641,7 @@ async fn value_and_property_wrappers_reuse_guest_derived_products(runtime: Runti
         graph_context.mutation().stage_new_version_from_id(updated.holon_id().unwrap()).unwrap();
     let available_schema: HolonReference = graph_context
         .lookup()
-        .get_saved_holon_by_key(&MapString("MAP Core Schema-v0.0.11".into()))
+        .get_saved_holon_by_key(&MapString("MAP Core Schema-v0.0.12".into()))
         .unwrap()
         .into();
     graph_update.add_related_holons("AvailableSchemas", vec![available_schema]).unwrap();

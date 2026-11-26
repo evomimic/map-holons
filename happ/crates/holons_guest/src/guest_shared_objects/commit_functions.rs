@@ -21,10 +21,7 @@ use holons_core::{
         transactions::TxId,
         Holon, HolonCollection, ReadableHolonState, StagedHolon,
     },
-    descriptors::{
-        resolve_inverse_relationship_name, ComputedEffectiveSchema, Descriptor,
-        DescriptorCommitEffects, TargetBinding,
-    },
+    descriptors::{ComputedEffectiveSchema, Descriptor, DescriptorCommitEffects, TargetBinding},
     reference_layer::ReadableHolon,
     HolonReference, StagedReference, WritableHolon,
 };
@@ -299,6 +296,33 @@ impl RelationshipCommitSource {
 
     fn source_local_id(&self) -> &LocalId {
         &self.source_local_id
+    }
+
+    /// Persistence operates after candidate assessment has frozen the authored contract.
+    /// Bootstrap may be committing that contract itself, so reuse one source projection
+    /// without constructing runtime schema results while materializing their prerequisites.
+    fn declared_relationship(
+        &self,
+        name: &RelationshipName,
+    ) -> Result<holons_core::descriptors::DeclaredRelationshipDescriptor, HolonError> {
+        self.schema
+            .get_or_init(|| {
+                let descriptor = self.source_reference.holon_descriptor()?;
+                match holons_core::descriptors::EffectiveHolonDescriptor::find_for_instance(
+                    &self.source_reference,
+                )? {
+                    Some(prepared) => ComputedEffectiveSchema::from_prepared(&prepared),
+                    None => ComputedEffectiveSchema::resolve(descriptor.holon()),
+                }
+            })
+            .as_ref()
+            .map_err(Clone::clone)?
+            .get_relationship_by_name(name.clone())?
+            .try_into_declared_relationship_descriptor()
+    }
+
+    fn inverse_name(&self, name: &RelationshipName) -> Result<RelationshipName, HolonError> {
+        self.declared_relationship(name)?.required_inverse()?.base_relationship_name()
     }
 }
 
@@ -799,7 +823,7 @@ pub fn commit(
                 "InverseName",
                 &relationship_source.source_reference,
                 &name,
-                || resolve_inverse_relationship_name(&relationship_source.source_reference, &name),
+                || relationship_source.inverse_name(&name),
             ) {
                 Ok(inverse_name) => inverse_name,
                 Err(error) => {
@@ -1374,22 +1398,7 @@ fn relationship_target_bindings(
     let descriptor_started_at = performance_timestamp_micros();
     let bindings =
         profile_descriptor_resolution("TargetBindings", &source.source_reference, name, || {
-            let schema = source
-                .schema
-                .get_or_init(|| {
-                    let descriptor = source.source_reference.holon_descriptor()?;
-                    match holons_core::descriptors::EffectiveHolonDescriptor::find_for_instance(
-                        &source.source_reference,
-                    )? {
-                        Some(prepared) => ComputedEffectiveSchema::from_prepared(&prepared),
-                        None => ComputedEffectiveSchema::resolve(descriptor.holon()),
-                    }
-                })
-                .as_ref()
-                .map_err(Clone::clone)?;
-            let relationship = schema
-                .get_relationship_by_name(name.clone())?
-                .try_into_declared_relationship_descriptor()?;
+            let relationship = source.declared_relationship(name)?;
             Ok((relationship.target_binding()?, relationship.required_inverse()?.target_binding()?))
         })?;
     performance_metrics.relationship_descriptor_resolution_count += 1;
@@ -1834,6 +1843,55 @@ fn emit_assessment_observations(
 mod tests {
     use super::*;
     use holons_core::core_shared_objects::holon::ValidationState;
+
+    #[test]
+    fn persistence_reuses_one_projection_before_runtime_schema_is_available(
+    ) -> Result<(), HolonError> {
+        use holons_core::core_shared_objects::{
+            space_manager::HolonSpaceManager, ServiceRoutingPolicy,
+        };
+        let space = HolonSpaceManager::new_with_managers(
+            None,
+            Arc::new(super::super::guest_holon_service::GuestHolonService::new()),
+            None,
+            ServiceRoutingPolicy::BlockExternal,
+        );
+        let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+        // This construction graph deliberately has no Descriptor Runtime result schema.
+        let node = |key: &str, name: &str| -> Result<HolonReference, HolonError> {
+            let mut reference = context.mutation().new_holon(Some(key.into()))?;
+            reference.with_property_value("TypeName", name)?;
+            Ok(reference.into())
+        };
+        let declared_type =
+            node("DeclaredRelationshipType.RelationshipType", "DeclaredRelationshipType")?;
+        let inverse_type =
+            node("InverseRelationshipType.RelationshipType", "InverseRelationshipType")?;
+        let mut inverse = node("Reverse", "Reverse")?;
+        inverse.add_related_holons(CoreRelationshipTypeName::Extends, vec![inverse_type])?;
+        let mut forward = node("Forward", "Forward")?;
+        forward.add_related_holons(CoreRelationshipTypeName::Extends, vec![declared_type])?;
+        forward.add_related_holons(CoreRelationshipTypeName::HasInverse, vec![inverse])?;
+        let mut descriptor = node("SourceType", "SourceType")?;
+        descriptor
+            .add_related_holons(CoreRelationshipTypeName::InstanceRelationships, vec![forward])?;
+        let mut source = node("subject", "Subject")?;
+        source.add_related_holons(CoreRelationshipTypeName::DescribedBy, vec![descriptor])?;
+        let source = RelationshipCommitSource {
+            source_local_id: LocalId(vec![1]),
+            source_key: None,
+            source_reference: source,
+            schema: std::sync::OnceLock::new(),
+            removed_targets: Default::default(),
+        };
+        let name = RelationshipName("Forward".into());
+        assert_eq!(source.inverse_name(&name)?, RelationshipName("Reverse".into()));
+        let projection = source.schema.get().unwrap().as_ref().unwrap();
+        assert_eq!(source.inverse_name(&name)?, RelationshipName("Reverse".into()));
+        source.declared_relationship(&name)?;
+        assert!(std::ptr::eq(projection, source.schema.get().unwrap().as_ref().unwrap()));
+        Ok(())
+    }
 
     #[test]
     fn committed_graph_only_retry_requests_no_key_index_lookup() -> Result<(), HolonError> {

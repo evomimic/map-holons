@@ -28,7 +28,7 @@ fn agent_contract_compiles_without_core_or_dancer_changes() -> Result<()> {
     assert_eq!(document, serde_json::from_str::<Value>(GENERATED)?);
     assert_eq!(
         targets(holon(&document, "MAP Agent Spaces Schema-v0.1.4"), "DependsOn"),
-        ["MAP Core Schema-v0.0.11"]
+        ["MAP Core Schema-v0.0.12"]
     );
     for (key, parent, abstract_type) in [
         ("Agent.HolonType", "HolonType.TypeDescriptor", true),

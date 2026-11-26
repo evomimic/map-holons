@@ -24,6 +24,8 @@ use std::sync::{Arc, Mutex, Weak};
 struct EvaluationScope {
     owner: HolonId,
     subject_type: HolonId,
+    #[serde(default)]
+    value_holder: Option<HolonId>,
     /// Descriptor-family occurrences can require a ValueType or an exact Dance identity.
     #[serde(default)]
     subject_semantics: Option<HolonId>,
@@ -42,7 +44,8 @@ impl EvaluationScope {
         else {
             return Ok(None);
         };
-        if request.demand_slot.as_ref().is_some_and(|r| saved(r).is_none())
+        if request.value_holder.as_ref().is_some_and(|r| saved(r).is_none())
+            || request.demand_slot.as_ref().is_some_and(|r| saved(r).is_none())
             || request.collection_source.as_ref().is_some_and(|r| saved(r).is_none())
         {
             return Ok(None);
@@ -59,6 +62,7 @@ impl EvaluationScope {
                 ) {
                     let descriptor =
                         super::usage_subject_type(&super::contract::VisualizerSelectionRequest {
+                            value_holder: request.value_holder.clone(),
                             subject: request.subject.clone(),
                             owner: super::contract::VisualizerOwner::Visualizer(
                                 request.owner.clone(),
@@ -75,6 +79,7 @@ impl EvaluationScope {
         Ok(Some(Self {
             owner,
             subject_type,
+            value_holder: request.value_holder.as_ref().and_then(saved),
             subject_semantics,
             occurrence: None,
             theme,
@@ -176,6 +181,7 @@ impl VisualizerEvaluationRegistry {
         {
             state.decisions.evaluations.iter().find(|e| {
                 e.scope.owner == scope.owner && e.scope.subject_type == scope.subject_type
+                    && e.scope.value_holder == scope.value_holder
                     && e.scope.theme == scope.theme
                     && e.scope.occurrence.as_ref().is_none_or(|id| saved(&request.subject).as_ref() == Some(id))
                     && e.scope.slot.is_none()
@@ -284,6 +290,7 @@ impl VisualizerEvaluationRegistry {
             result.data.metadata.iter().any(|m| m.reference == i)
                 || result.data.theme == Some(i)
                 || result.data.populations.iter().any(|p| p.source == i || p.members.contains(&i))
+                || result.data.contextual_holders.contains(&i)
                 || result.data.bindings.iter().any(|b| {
                     [b.owner, b.slot, b.subject_descriptor, b.selected, b.implementation]
                         .contains(&i)

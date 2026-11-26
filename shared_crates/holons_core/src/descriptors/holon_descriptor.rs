@@ -1,20 +1,21 @@
 #[cfg(test)]
-use crate::descriptors::{CommandDescriptor, DeclaredRelationshipDescriptor, KeyRuleDescriptor};
+use crate::descriptors::{
+    effective_relationships, CommandDescriptor, DeclaredRelationshipDescriptor,
+    InverseRelationshipDescriptor, KeyRuleDescriptor,
+};
 use std::collections::HashSet;
 #[cfg(test)]
 use type_names::{ToCommandName, ToPropertyName};
 
 use crate::descriptors::{
-    accessor_helpers, effective_relationships,
-    inheritance::{effective_relationship_targets, walk_extends_chain},
-    DanceDescriptor, Descriptor, InverseRelationshipDescriptor, PropertyDescriptor,
-    QualifiedRelationship, RelationshipDescriptor, TypeHeader,
+    accessor_helpers, inheritance::effective_relationship_targets, DanceDescriptor, Descriptor,
+    PropertyDescriptor, RelationshipDescriptor, TypeHeader,
 };
-use crate::reference_layer::{HolonReference, ReadableHolon};
+use crate::reference_layer::HolonReference;
 use core_types::HolonError;
 #[cfg(test)]
 use core_types::PropertyName;
-use type_names::{CorePropertyTypeName, CoreRelationshipTypeName, ToDanceName, ToRelationshipName};
+use type_names::{CoreRelationshipTypeName, ToDanceName, ToRelationshipName};
 
 /// Runtime wrapper for holon-type descriptors.
 ///
@@ -76,37 +77,23 @@ impl HolonDescriptor {
     /// descriptor-property `Local` inheritance policy: lifecycle permission
     /// may be narrowed by a subtype but never widened again.
     pub fn instance_deletion_allowed(&self) -> Result<bool, HolonError> {
-        for descriptor in walk_extends_chain(&self.holon) {
-            let value =
-                descriptor?.property_value(CorePropertyTypeName::InstanceDeletionAllowed)?;
-            match value {
-                Some(base_types::BaseValue::BooleanValue(value)) if !value.0 => return Ok(false),
-                Some(base_types::BaseValue::BooleanValue(_)) => {}
-                Some(other) => {
-                    return Err(HolonError::UnexpectedValueType(
-                        format!("{other:?}"),
-                        "Boolean".into(),
-                    ));
-                }
-                None => {
-                    return Err(HolonError::InvalidState(
-                        "InstanceDeletionAllowed is missing from a holon type descriptor"
-                            .to_string(),
-                    ));
-                }
-            }
-        }
-
-        Ok(true)
+        self.derived_fields.read(&self.holon, |result| result.instance_deletion_allowed())
     }
 
     /// Returns effective instance property descriptors across this descriptor's inheritance chain.
-    pub(crate) fn instance_properties(&self) -> Result<Vec<PropertyDescriptor>, HolonError> {
+    /// Default population uses this while assembling preparation requests; ordinary
+    /// consumers acquire the effective descriptor instead.
+    pub(crate) fn instance_properties_for_assembly(
+        &self,
+    ) -> Result<Vec<PropertyDescriptor>, HolonError> {
         self.flatten_property_descriptors(CoreRelationshipTypeName::InstanceProperties)
     }
 
     /// Returns effective instance relationship descriptors across this descriptor's inheritance chain.
-    pub(crate) fn instance_relationships(&self) -> Result<Vec<RelationshipDescriptor>, HolonError> {
+    /// Comparison and scope binding need this before unfinished schema can be prepared.
+    pub(crate) fn instance_relationships_for_assembly(
+        &self,
+    ) -> Result<Vec<RelationshipDescriptor>, HolonError> {
         self.effective_relationship_descriptors(CoreRelationshipTypeName::InstanceRelationships)
     }
 
@@ -124,7 +111,7 @@ impl HolonDescriptor {
     }
 
     /// Returns effective dance descriptors across this descriptor's inheritance chain.
-    pub(crate) fn afforded_dances(&self) -> Result<Vec<DanceDescriptor>, HolonError> {
+    pub(crate) fn afforded_dances_for_assembly(&self) -> Result<Vec<DanceDescriptor>, HolonError> {
         effective_relationship_targets(&self.holon, CoreRelationshipTypeName::AffordsDance).map(
             |members| {
                 members
@@ -161,7 +148,7 @@ impl HolonDescriptor {
         let mut seen = HashSet::new();
         let mut found = None;
 
-        for descriptor in self.instance_properties()? {
+        for descriptor in self.instance_properties_for_assembly()? {
             let declaration_name = PropertyName(descriptor.header().type_name()?);
             let declaration_label = declaration_name.to_string();
             if !seen.insert(declaration_label.clone()) {
@@ -231,11 +218,12 @@ impl HolonDescriptor {
         &self,
         name: impl ToDanceName,
     ) -> Result<DanceDescriptor, HolonError> {
-        self.get_dance_by_name(name)
+        self.get_dance_by_name_for_assembly(name)
     }
 
     /// Finds an effective dance affordance by dance descriptor type name.
-    pub(crate) fn get_dance_by_name(
+    /// Invocation binding must also work for the construction Dance itself.
+    pub(crate) fn get_dance_by_name_for_assembly(
         &self,
         name: impl ToDanceName,
     ) -> Result<DanceDescriptor, HolonError> {
@@ -248,7 +236,7 @@ impl HolonDescriptor {
         let mut seen = HashSet::new();
         let mut found = None;
 
-        for descriptor in self.afforded_dances()? {
+        for descriptor in self.afforded_dances_for_assembly()? {
             let declaration_name = descriptor.dance_name()?;
             let declaration_label = declaration_name.to_string();
             if !seen.insert(declaration_label.clone()) {
@@ -271,7 +259,7 @@ impl HolonDescriptor {
     }
 
     /// Finds an effective instance relationship by base relationship name.
-    pub(crate) fn get_relationship_by_name(
+    pub(crate) fn get_relationship_by_name_for_assembly(
         &self,
         name: impl ToRelationshipName,
     ) -> Result<RelationshipDescriptor, HolonError> {
@@ -280,7 +268,7 @@ impl HolonDescriptor {
         let mut seen = HashSet::new();
         let mut found = None;
 
-        for descriptor in self.instance_relationships()? {
+        for descriptor in self.instance_relationships_for_assembly()? {
             let declaration_name = descriptor.base_relationship_name()?;
             let declaration_label = declaration_name.to_string();
             if !seen.insert(declaration_label.clone()) {
@@ -309,26 +297,10 @@ impl HolonDescriptor {
         declared_name: impl ToRelationshipName,
     ) -> Result<InverseRelationshipDescriptor, HolonError> {
         let declared = self
-            .get_relationship_by_name(declared_name)?
+            .get_relationship_by_name_for_assembly(declared_name)?
             .try_into_declared_relationship_descriptor()?;
 
         declared.required_inverse()
-    }
-
-    /// Resolves one relationship that is effective for outbound navigation
-    /// from instances of this descriptor.
-    ///
-    /// This is a descriptor-level read-navigation operation. It resolves the
-    /// requested name across inherited declared and inverse relationship
-    /// contributions and returns its direction in `QualifiedRelationship`.
-    /// It does **not** authorize an agent, validate an authored occurrence, or
-    /// determine whether a write is permitted. Those are separate security and
-    /// relationship-orientation concerns.
-    pub(crate) fn resolve_available_relationship(
-        &self,
-        name: impl ToRelationshipName,
-    ) -> Result<QualifiedRelationship, HolonError> {
-        effective_relationships::resolve_available_relationship(self, name.to_relationship_name())
     }
 
     /// Enumerates the inherited declared relationship contract for instances
@@ -349,24 +321,13 @@ impl HolonDescriptor {
     /// instances of this descriptor.
     ///
     /// This is read-navigation metadata, not authored-write permission. It
-    /// requires the materialized `TargetOf` index and therefore may return
+    /// requires the materialized `SourceOf` index and therefore may return
     /// `UnsupportedStagedTraversal` for unsaved descriptor endpoints.
+    #[cfg(test)]
     pub(crate) fn effective_inverse_relationships(
         &self,
     ) -> Result<Vec<InverseRelationshipDescriptor>, HolonError> {
         effective_relationships::effective_inverse_relationships(self)
-    }
-
-    /// Enumerates descriptor-level effective outbound navigation metadata for
-    /// instances of this descriptor: inherited declared relationships plus
-    /// inherited inverse relationships whose `SourceType` is this type.
-    ///
-    /// This is type-level and state-agnostic; use
-    /// [`crate::reference_layer::ReadableHolon::available_relationships`] to
-    /// filter by the state of a concrete source holon reference.
-    #[cfg(test)]
-    pub(crate) fn effective_relationships(&self) -> Result<Vec<QualifiedRelationship>, HolonError> {
-        effective_relationships::effective_relationships(self)
     }
 
     /// Resolves the effective key rule for instances of this descriptor.
@@ -601,12 +562,12 @@ mod tests {
 
         let descriptor = HolonDescriptor::from_holon(leaf.into());
         let property_names = descriptor
-            .instance_properties()?
+            .instance_properties_for_assembly()?
             .into_iter()
             .map(|property| property.header().type_name())
             .collect::<Result<Vec<_>, _>>()?;
         let relationship_names = descriptor
-            .instance_relationships()?
+            .instance_relationships_for_assembly()?
             .into_iter()
             .map(|relationship| relationship.header().type_name())
             .collect::<Result<Vec<_>, _>>()?;
@@ -757,7 +718,7 @@ mod tests {
         let descriptor = HolonDescriptor::from_holon(leaf.into());
 
         assert_eq!(
-            dance_names(descriptor.afforded_dances()?)?,
+            dance_names(descriptor.afforded_dances_for_assembly()?)?,
             vec![
                 DanceName(MapString("Query".to_string())),
                 DanceName(MapString("Dance".to_string())),
@@ -789,7 +750,7 @@ mod tests {
         let descriptor = HolonDescriptor::from_holon(leaf.into());
 
         assert_eq!(
-            dance_names(descriptor.afforded_dances()?)?,
+            dance_names(descriptor.afforded_dances_for_assembly()?)?,
             vec![
                 DanceName(MapString("Dance".to_string())),
                 DanceName(MapString("Query".to_string())),
@@ -812,7 +773,7 @@ mod tests {
         let descriptor = HolonDescriptor::from_holon(holon_type.into());
 
         assert_eq!(
-            descriptor.get_dance_by_name("query")?.dance_name()?,
+            descriptor.get_dance_by_name_for_assembly("query")?.dance_name()?,
             DanceName(MapString("Query".to_string()))
         );
 
@@ -1199,7 +1160,7 @@ mod tests {
         let descriptor = HolonDescriptor::from_holon(holon_type.into());
 
         assert!(matches!(
-            descriptor.get_dance_by_name("Commit"),
+            descriptor.get_dance_by_name_for_assembly("Commit"),
             Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
                 if kind == "dance" && name == "Commit"
         ));
@@ -1228,7 +1189,7 @@ mod tests {
         let descriptor = HolonDescriptor::from_holon(leaf.into());
 
         assert!(matches!(
-            descriptor.get_dance_by_name("Query"),
+            descriptor.get_dance_by_name_for_assembly("Query"),
             Err(HolonError::DuplicateInheritedDeclaration { kind, name, .. })
                 if kind == "dance" && name == "Query"
         ));
@@ -1253,7 +1214,10 @@ mod tests {
 
         let descriptor = HolonDescriptor::from_holon(descriptor_a.into());
 
-        assert!(matches!(descriptor.afforded_dances(), Err(HolonError::CyclicExtends { .. })));
+        assert!(matches!(
+            descriptor.afforded_dances_for_assembly(),
+            Err(HolonError::CyclicExtends { .. })
+        ));
 
         Ok(())
     }
@@ -1273,7 +1237,7 @@ mod tests {
         let descriptor = HolonDescriptor::from_holon(child.into());
 
         assert!(matches!(
-            descriptor.afforded_dances(),
+            descriptor.afforded_dances_for_assembly(),
             Err(HolonError::MultipleExtends { count, .. }) if count == 2
         ));
 
@@ -1313,7 +1277,9 @@ mod tests {
         let descriptor = HolonDescriptor::from_holon(holon_type.into());
 
         assert_eq!(
-            descriptor.get_relationship_by_name("authored_by")?.base_relationship_name()?,
+            descriptor
+                .get_relationship_by_name_for_assembly("authored_by")?
+                .base_relationship_name()?,
             RelationshipName(MapString("AuthoredBy".to_string()))
         );
 
@@ -1466,7 +1432,7 @@ mod tests {
         let descriptor = HolonDescriptor::from_holon(leaf.into());
 
         assert!(matches!(
-            descriptor.get_relationship_by_name(RelationshipName(MapString(
+            descriptor.get_relationship_by_name_for_assembly(RelationshipName(MapString(
                 "DuplicateRelationship".to_string()
             ))),
             Err(HolonError::DuplicateInheritedDeclaration { kind, name, .. })
@@ -1490,13 +1456,15 @@ mod tests {
 
         assert_eq!(
             descriptor
-                .get_relationship_by_name(RelationshipName(MapString("AuthoredBy".to_string())))?
+                .get_relationship_by_name_for_assembly(RelationshipName(MapString(
+                    "AuthoredBy".to_string()
+                )))?
                 .base_relationship_name()?
                 .to_string(),
             "AuthoredBy"
         );
         assert!(matches!(
-            descriptor.get_relationship_by_name(RelationshipName(MapString("Missing".to_string()))),
+            descriptor.get_relationship_by_name_for_assembly(RelationshipName(MapString("Missing".to_string()))),
             Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
                 if kind == "relationship" && name == "Missing"
         ));

@@ -1128,3 +1128,23 @@ fn prepare_requiredness(
         })
         .clone()
 }
+
+impl holons_core::descriptors::ContextualValueTypeFacts for DescriptorPackages {
+    fn has_role(
+        &self,
+        reference: &HolonReference,
+        role: type_names::CoreDefinitionRole,
+    ) -> Result<bool, HolonError> {
+        Ok(self
+            .diagnoses
+            .get(reference)?
+            .valid_lineage()
+            .is_some_and(|lineage| lineage.contains_role(role)))
+    }
+    fn selected_value_type(
+        &self,
+        property: &HolonReference,
+    ) -> Result<Option<HolonReference>, HolonError> {
+        Ok(self.value_type(property)?.cloned())
+    }
+}

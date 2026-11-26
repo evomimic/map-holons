@@ -42,16 +42,9 @@ impl<'a> DefaultDeclarationAssessment<'a> {
             holon_identity: self.property.full_reference_id_string(),
             property: "DefaultValue".into(),
         };
-        let target = self.packages.value_type(self.property)?;
-        let usable = match target {
-            Some(target) => {
-                self.packages.diagnoses.get(target)?.valid_lineage().is_some_and(|lineage| {
-                    lineage.contains_role(type_names::CoreDefinitionRole::ValueType)
-                })
-            }
-            None => false,
-        };
-        let Some(target) = target.filter(|_| usable) else {
+        let target =
+            holons_core::descriptors::resolve_default_value_type(self.property, self.packages)?;
+        let Some(target) = target else {
             crate::diagnostics::finding(
                 collector,
                 CommitValidationViolationKind::UnresolvedLocalDependency,
@@ -64,7 +57,7 @@ impl<'a> DefaultDeclarationAssessment<'a> {
         };
         super::subjects::assess_value(
             self.value,
-            &ValueDescriptor::from_holon(target.clone()),
+            &ValueDescriptor::from_holon(target),
             &path,
             self.values,
             self.roles,

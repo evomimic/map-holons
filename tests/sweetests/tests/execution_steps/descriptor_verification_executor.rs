@@ -1355,6 +1355,7 @@ async fn verify_book_value_presentation(
                     context: context.clone(),
                     action: TransactionAction::SelectVisualizer {
                         request: VisualizerSelectionRequest {
+                            value_holder: None,
                             subject,
                             requested_kind: kind,
                             owner: map_commands_contract::VisualizerOwner::Visualizer(
@@ -1423,6 +1424,7 @@ async fn verify_book_value_presentation(
                 context: context.clone(),
                 action: TransactionAction::ResolveComposition {
                     request: holons_core::dahn::composition::CompositionRequest {
+                        value_holder: None,
                         owner: node.clone(),
                         subject: book.clone(),
                         theme: context

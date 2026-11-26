@@ -5,7 +5,7 @@ meta {
 }
 
 schema "MAP Query Schema-v0.0.6" {
-  depends_on "MAP Core Schema-v0.0.11"
+  depends_on "MAP Core Schema-v0.0.12"
   header {
     description: "Descriptor definitions for reusable MAP queries and their direct runtime execution state. Dance-mediated invocation is owned by the separate Query Dance Adapter Schema."
   }
